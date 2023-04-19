@@ -1,0 +1,13 @@
+---
+title: "LUEM A5 - Forecasting Sprawl"
+author: "Lindsey Hover & Charlie Townsley"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+rm(list=ls())
+```
+
