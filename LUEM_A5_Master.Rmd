@@ -121,7 +121,13 @@ Data level: Census tract
 ```
 
 ```{r Atlanta MSA shapefile}
-metro_boundary <- core_based_statistical_areas("GA", "Atlanta", )
+metro_boundary <- core_based_statistical_areas(cb = TRUE, resolution = "500k", year = NULL) %>% 
+  filter(CBSAFP == "12060")
+
+ggplot(metro_boundary) + 
+  geom_sf() + 
+  theme_bw() + 
+  labs(title = "TIGER/Line")
 ```
 
 
