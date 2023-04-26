@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 rm(list=ls())
 
 options(scipen = 999) #turn off scientific notation
@@ -121,7 +121,7 @@ Data level: Census tract
 ```
 
 ```{r Atlanta MSA shapefile}
-
+metro_boundary <- core_based_statistical_areas("GA", "Atlanta", )
 ```
 
 
