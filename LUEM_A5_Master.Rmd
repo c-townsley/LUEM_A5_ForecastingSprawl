@@ -114,7 +114,16 @@ Data level: Census tract
 
 <br>
 
-# Gather Data
+# Data Gathering and Feature Engineering
+
+```{r fishnet}
+#ideal fishnet cell size is 2000'x2000'
+```
+
+```{r Atlanta MSA shapefile}
+
+```
+
 
 ## Landcover
 
