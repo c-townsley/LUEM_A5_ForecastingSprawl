@@ -104,7 +104,7 @@ rast <- function(inRaster) {
 
 Region of interest: Atlanta, GA metro
 
-Years of study: 2009-2019
+Years of study: 2008-2019
 
 Projecting to 2029
 
@@ -138,24 +138,31 @@ library(sf)
 Pull the Atlanta MSA boundary with the `tigris` package.
 
 ```{r Atlanta MSA shapefile}
+#List of the Atlanta region MPOs 21 counties
+Counties <- c("Barrow", "Bartow", "Carroll", "Cherokee", 
+              "Clayton", "Cobb", "Coweta", "Dawson", 
+              "DeKalb", "Douglas", "Fayette", "Forsyth", 
+              "Fulton", "Gwinnett", "Hall", "Henry", 
+              "Newton", "Paulding", "Rockdale", "Spalding", "Walton")
+
 #First pull all MSAs in the U.S., then search for yours and filter with the correct CBSAFP code
-metro_boundary <- core_based_statistical_areas(cb = TRUE, resolution = "500k", year = NULL) %>% 
-  filter(CBSAFP == "12060") %>% 
+metro_counties <- counties(state = "GA", cb = TRUE, resolution = "500k", year = NULL) %>%
+  filter(NAME %in% Counties) %>% 
   st_transform("ESRI:102267")
 
 #plot MSA boundary to make sure its right
-ggplot(metro_boundary) + 
+ggplot(metro_counties) + 
   geom_sf() + 
   theme_bw() + 
-  labs(title = "TIGER/Line")
+  labs(title = "Atlanta 21 County MSA")
 ```
 
 
 ```{r msa conversion, include=FALSE, eval=FALSE}
 #Convert shapefile to geojson so can store on github
-st_write(metro_boundary, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/Atlanta_Metro_Boundary.geojson")
+st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/Atlanta_Metro_Counties.geojson")
 
-st_write(metro_boundary, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/shapefile/Atlanta_Metro_Boundary/Atlanta_Metro_Boundary.shp")
+st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/shapefile/Atlanta_Metro_Boundary/Atlanta_Metro_Counties.shp")
 ```
 
 
@@ -163,21 +170,22 @@ Create a fishnet of the Atlanta metro using 2000'x2000' cells.
 
 ```{r fishnet}
 AtlantaMSA_fishnet <- 
-  st_make_grid(metro_boundary, cellsize = 2000, square = FALSE) %>%
+  st_make_grid(metro_counties, cellsize = 2000, square = FALSE) %>%
   st_sf()
 
 AtlantaMSA_fishnet <-
-  AtlantaMSA_fishnet[metro_boundary,]
+  AtlantaMSA_fishnet[metro_counties,]
 
 #plot MSA boundary to make sure its right
 ggplot()+
   geom_sf(data = AtlantaMSA_fishnet,
           fill = "lightgrey") +
-  geom_sf(data = metro_boundary, 
+  geom_sf(data = metro_counties, 
           color = "black", fill = "transparent") +
   labs(title = "Atlanta MSA Fishnet") +
   mapTheme
 ```
+
 
 ## Landcover
 
@@ -380,9 +388,145 @@ aggregatedRasters %>%
 
 
 ```
+
 ## Land Use
 
-## Population
+
+## Census Data: Population
+
+Download population data for 2009.
+
+```{r metro pop 2009}
+# Look here for variable codes
+acs_vars <- load_variables(2009, "acs5")
+
+#Pull 2009 population
+Pop09 <- 
+  get_acs(geography = "tract", variables = "B01003_001", year = 2009,
+                state = 13, geometry = TRUE, 
+                county = Counties) %>%
+  rename("pop09" = estimate) %>% 
+  st_transform(st_crs(AtlantaMSA_fishnet))
+```
+
+Download population data for 2019.
+
+```{r metro pop 2019}
+#Pull 2019 population
+Pop19 <- 
+  get_acs(geography = "tract", variables = "B01003_001", year = 2019,
+                state = 13, geometry = TRUE, 
+                county = Counties) %>%
+  rename("pop19" = estimate) %>% 
+  st_transform(st_crs(AtlantaMSA_fishnet)) %>% 
+  st_buffer(-1) #buffer the the tracts by -1ft. This is done because tidycensus appears to return geometries that are problematic when subjected to the area weighted interpolation function
+```
+
+
+```{r plot both pop years, fig.width=8}
+grid.arrange(
+ggplot() +
+  geom_sf(data = Pop09, aes(fill=factor(ntile(pop09,5))), colour=NA) +
+  scale_fill_manual(values = palette5,
+                    labels=quintileBreaks(Pop09,"pop09"),
+                   name="Quintile\nBreaks") +
+  labs(title="2009 Population\nAtlanta 21-County MSA") +
+  mapTheme,
+
+ggplot() +
+  geom_sf(data = Pop19, aes(fill=factor(ntile(pop19,5))), colour=NA) +
+  scale_fill_manual(values = palette5,
+                    labels=quintileBreaks(Pop19,"pop19"),
+                   name="Quintile\nBreaks") +
+  labs(title="2019 Population\nAtlanta 21-County MSA") +
+  mapTheme, ncol=2)
+```
+
+Reconcile tract boundaries and fishnet grid cells
+
+```{r reconcile tracts and fishnet cells}
+AtlantaMSA_fishnet <-
+  AtlantaMSA_fishnet %>%
+  rownames_to_column("fishnetID") %>% 
+  mutate(fishnetID = as.numeric(fishnetID)) %>%
+  dplyr::select(fishnetID)
+
+fishnetPop09 <-
+  st_interpolate_aw(Pop09["pop09"], AtlantaMSA_fishnet, extensive=TRUE) %>%
+  as.data.frame(.) %>%
+  rownames_to_column(var = "fishnetID") %>%
+  left_join(AtlantaMSA_fishnet %>%
+              mutate(fishnetID = as.character(fishnetID)),
+            ., by=c("fishnetID"='fishnetID')) %>% 
+  mutate(pop09 = replace_na(pop09,0)) %>%
+  dplyr::select(pop09)
+
+fishnetPop19 <-
+  st_interpolate_aw(Pop19["pop19"], AtlantaMSA_fishnet, extensive=TRUE) %>%
+  as.data.frame(.) %>%
+  rownames_to_column(var = "fishnetID") %>%
+  left_join(AtlantaMSA_fishnet %>%
+              mutate(fishnetID = as.character(fishnetID)),
+            ., by=c("fishnetID"='fishnetID')) %>% 
+  mutate(pop19 = replace_na(pop19,0)) %>%
+  dplyr::select(pop19)
+
+fishnetPop <- 
+  cbind(fishnetPop09, fishnetPop19) %>%
+  dplyr::select(pop09,pop19) %>%
+  mutate(pop_Change = pop19 - pop09)
+```
+
+Compare population by tract vs pop by grid cell
+
+```{r plot pop tract and grid cell}
+grid.arrange(
+ggplot() +
+  geom_sf(data=Pop19, aes(fill=factor(ntile(pop19,5))),colour=NA) +
+  scale_fill_manual(values = palette5,
+                    labels=substr(quintileBreaks(Pop19,"pop19"),1,4),
+                   name="Quintile\nBreaks") +
+  labs(title="2019 Population\nAtlanta 21-County MSA",
+       subtitle="Represented as tracts; Boundaries omitted") +
+  mapTheme,
+
+ggplot() +
+  geom_sf(data=fishnetPop, aes(fill=factor(ntile(pop19,5))), colour=NA) +
+  scale_fill_manual(values = palette5,
+                   labels=substr(quintileBreaks(fishnetPop,"pop19"),1,4),
+                   name="Quintile\nBreaks") +
+  labs(title="2019 Population\nAtlanta 21-County MSA",
+       subtitle="Represented as fishnet gridcells; Boundaries omitted") +
+  mapTheme, ncol=2)
+```
+
+## Highway Distance
+
+Load in highway data.
+
+```{r highway to geojson, include=FALSE, eval=FALSE}
+metro_highways <- st_read("C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/shapefile/AtlantaMetro_Major_Roads/Major_Roads.shp")
+
+st_write(metro_highways, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/Major_Roads.geojson")
+```
+
+
+```{r highways}
+AtlantaHighways <-
+  st_read("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/8b689651286bb4ff28554095bd39ce1bd87655e4/Data/geojson/Major_Roads.geojson") %>%
+  st_transform(st_crs(metro_counties)) %>%
+  st_intersection(metro_counties) %>% 
+  filter(FEATURE_TY == "State Highway")
+
+#INCLUDE NEW DEVELOPMENT IN PLOT ONCE THAT CODE IS WRITTEN
+ggplot() +
+  geom_sf(data=metro_counties) +
+  geom_sf(data=AtlantaHighways) +
+  labs(title = "Highways") +
+  mapTheme
+```
+
+
 
 ## Development
 
