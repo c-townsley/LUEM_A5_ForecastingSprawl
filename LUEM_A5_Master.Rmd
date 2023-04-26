@@ -146,16 +146,25 @@ ggplot(metro_boundary) +
   theme_bw() + 
   labs(title = "TIGER/Line")
 ```
+
+
 ```{r msa conversion, include=FALSE, eval=FALSE}
 #Convert shapefile to geojson so can store on github
 st_write(metro_boundary, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/Atlanta_Metro_Boundary.geojson")
+
+st_write(metro_boundary, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/shapefile/Atlanta_Metro_Boundary/Atlanta_Metro_Boundary.shp")
 ```
 
 
 Create a fishnet of the Atlanta metro using 2000'x2000' cells.
 
 ```{r fishnet}
-#ideal fishnet cell size is 2000'x2000'
+AtlantaMSA_fishnet <- 
+  st_make_grid(metro_boundary, cellsize = 2000, square = FALSE) %>%
+  st_sf()
+
+AtlantaMSA_fishnet <-
+  AtlantaMSA_fishnet[metro_boundary,]
 ```
 
 ## Landcover
