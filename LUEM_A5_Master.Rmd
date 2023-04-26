@@ -13,7 +13,7 @@ rm(list=ls())
 options(scipen = 999) #turn off scientific notation
 ```
 
-# Introduction
+# Introduction!
 
 Region of interest: Atlanta, GA metro
 
