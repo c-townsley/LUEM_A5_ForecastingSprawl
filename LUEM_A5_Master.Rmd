@@ -115,11 +115,18 @@ Data level: Census tract
 <br>
 
 # Data Gathering and Feature Engineering
-```{r creating GeoJSON from Shapefile, include=FALSE}
-library(sf)
-SHP1 <- st_read("C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Shapefiles/SHP1.shp")
 
-GeoJSON1 <- st_write(SHP1, "C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/GeoJSONs/SHP1.geojson")
+```{r creating GeoJSON from Shapefile, include=FALSE, eval=FALSE}
+
+library(sf)
+#SHP1 <- st_read("C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Shapefiles/SHP1.shp")
+
+#GeoJSON1 <- st_write(SHP1, "C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/GeoJSONs/SHP1.geojson")
+
+#GeoJSON_x <- st_read("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/d9859fc1069dd89d44fcaf345e722a9bf601a550/Data/geojson/GeoJSON_x.geojson") ### specify the file name (note: this is the permalink, but you change the domain to raw.githubusercontent.com AND you remove /blob/)
+
+
+#Atlanta_metro_bounday <- st_read("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/d9859fc1069dd89d44fcaf345e722a9bf601a550/Data/geojson/Atlanta_Metro_Boundary.geojson")
 
 ```
 
