@@ -9,5 +9,72 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 rm(list=ls())
+
+options(scipen = 999) #turn off scientific notation
 ```
+
+# Introduction
+
+Region of interest: Atlanta, GA metro
+
+Years of study: 2009-2019
+
+Projecting to 2029
+
+Data level: Census tract
+
+**Steps**
+1. Wrangle data for time period 1 land use, infrastructure, census etc.  
+2. Wrangle same data for time period 2  
+3. ID areas of land use change period 1 -> period 2  
+4. Use period 1 data to create a model ("the model") to predict land use change  
+5. Feed period 2 data to the model to project for period 3 in the context of scenarios specified in the assignment  
+
+<br>
+
+# Gather Data
+
+## Landcover
+
+## Land Use
+
+## Population
+
+## Development
+
+<br>
+
+# Data Exploration
+
+## ID areas of land use change period 1 -> period 2  
+
+<br>
+
+# Model Building: Binary Logistic Regression
+
+Use period 1 data to create a model ("the model") to predict land use change
+
+# Model Testing and Validation
+
+# Planning Scenarios (Projections)
+
+## Scenario 1: Supply-side Change Forecast
+
+>From Assignment:
+>In this scenario, you will “plan” a new large-scale development, like a new highway or public transportation line. Your model will probably use transit proximity as a predictor of land use change – what happens when you make new infrastructure and then predict the location of new development?
+
+>Draw this new development in ArcGIS or the mapedit package (if it requires new infrastructure) and you will briefly describe the nature of this new development (What is it? What kind of new demand do you expect it to generate?). Please be creative in how you design/describe your intervention.
+
+>After drawing the new development, come up with a scenario-based population projection for that area and create a development forecast for 2029.
+
+
+## Scenario 2: Demand-side Change Forecast
+
+>From Assignment:
+>Demand-side change: In this scenario, you will find or approximate 2029 population projections for your study area and then ‘distribute’ the ‘new’ population among all the census tracts in the region according to a logic or plan that you devise[4].
+You will use your population forecast and 2019 data to predict where new development will occur in 2029. Metropolitan planning organizations (MPOs) publish population forecasts for metro areas. If you can’t find one for your area, make some reasonable projection of your own and note that you have done so.
+
+
+
+
 
