@@ -11,6 +11,11 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 rm(list=ls())
 
 options(scipen = 999) #turn off scientific notation
+#install.packages("FNN")
+#install.packages("ggrepel")
+#install.packages("yardstick")
+#install.packages("igraph")
+
 ```
 
 ```{r libraries and themes}
@@ -176,6 +181,205 @@ ggplot()+
 
 ## Landcover
 
+```{r Import Land Cover data}
+lc_2008 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/cfd6db18d222958b58a1d9169fe261fd5578d277/Data/raster/2008LC.tif")
+
+lc_2019 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/cfd6db18d222958b58a1d9169fe261fd5578d277/Data/raster/2019LC.tif")
+
+```
+
+```{r Plot land cover for 2008 and 2019}
+
+grid.arrange(ncol = 2,
+ggplot() +
+  geom_sf(data=metro_boundary) +
+  geom_raster(data=rast(lc_2008) %>% na.omit %>% filter(value > 0), 
+              aes(x,y,fill=as.factor(value))) +
+  scale_fill_viridis(discrete=TRUE, name ="") +
+  labs(title = "Land Cover, 2008") +
+  mapTheme +
+  theme(legend.direction="horizontal")
+       +
+  mapTheme,
+
+ggplot() +
+  geom_sf(data=metro_boundary) +
+  geom_raster(data=rast(lc_2019) %>% na.omit %>% filter(value > 0), 
+              aes(x,y,fill=as.factor(value))) +
+  scale_fill_viridis(discrete=TRUE, name ="") +
+  labs(title = "Land Cover, 2019") +
+  mapTheme +
+  theme(legend.direction="horizontal")
+       +
+  mapTheme)
+
+```
+
+
+```{r define Reclassify Matrix}
+reclassMatrix <- 
+  matrix(c(
+    0,12,0,
+    12,24,1,
+    24,Inf,0),
+  ncol=3, byrow=T)
+
+reclassMatrix
+
+```
+
+``` {r}
+lc_2008r <- 
+  reclassify(lc_2008,reclassMatrix)
+
+lc_2008r[lc_2008r < 1] <- NA
+
+names(lc_2008r) <- "lc_change08"
+
+
+lc_2019r <- 
+  reclassify(lc_2019,reclassMatrix)
+
+lc_2019r[lc_2019r < 1] <- NA
+
+names(lc_2019r) <- "lc_change19"
+
+
+
+
+ggplot() +
+  geom_sf(data=AtlantaMSA_fishnet) +
+  geom_raster(data=rast(lc_2008r) %>% na.omit, 
+              aes(x,y,fill=as.factor(value))) +
+  scale_fill_viridis(discrete=TRUE, name ="Land Cover\nChange") + 
+  labs(title="Development Land Use Change") +
+  mapTheme
+
+
+```
+
+
+```{r converting fishnet to centroids}
+changePoints <-
+  rasterToPoints(lc_2008r) %>%
+  as.data.frame() %>%
+  st_as_sf(coords = c("x", "y"), crs = st_crs(AtlantaMSA_fishnet))
+
+fishnet <- 
+  aggregate(changePoints, AtlantaMSA_fishnet, sum) %>%
+  mutate(lc_2008r = ifelse(is.na(lc_2008r),0,1),
+         lc_2008r = as.factor(lc_2008r))
+
+ggplot() +
+  geom_sf(data = metro_boundary) +
+  geom_point(data = AtlantaMSA_fishnet, 
+             aes(x=xyC(AtlantaMSA_fishnet)$x, y=xyC(AtlantaMSA_fishnet)$y, colour=lc_2008r)) +
+  scale_colour_manual(values = palette2,
+                      labels=c("No Change","New Development"),
+                      name = "") +
+  labs(title = "Land Cover Development Change", subtitle = "As fishnet centroids") +
+  mapTheme
+
+
+
+```
+
+```{r setup Land Cover}
+
+developed <- lc_2008 == 21 | lc_2008 == 22 | lc_2008 == 23 | lc_2008 == 24
+forest <- lc_2008 == 41 | lc_2008 == 42 | lc_2008 == 43 
+farm <- lc_2008 == 81 | lc_2008 == 82 
+wetlands <- lc_2008 == 90 | lc_2008 == 95 
+otherUndeveloped <- lc_2008 == 52 | lc_2008 == 71 | lc_2008 == 31 
+water <- lc_2008 == 11
+
+developed <- lc_2019 == 21 | lc_2019 == 22 | lc_2019 == 23 | lc_2019 == 24
+forest <- lc_2019 == 41 | lc_2019 == 42 | lc_2019 == 43 
+farm <- lc_2019 == 81 | lc_2019 == 82 
+wetlands <- lc_2019 == 90 | lc_2019 == 95 
+otherUndeveloped <- lc_2019 == 52 | lc_2019 == 71 | lc_2019 == 31 
+water <- lc_2019 == 11
+
+developed <- lc_2008 == 21 | lc_2008 == 22 | lc_2008 == 23 | lc_2008 == 24
+forest <- lc_2008 == 41 | lc_2008 == 42 | lc_2008 == 43 
+farm <- lc_2008 == 81 | lc_2008 == 82 
+wetlands <- lc_2008 == 90 | lc_2008 == 95 
+otherUndeveloped <- lc_2008 == 52 | lc_2008 == 71 | lc_2008 == 31 
+water <- lc_2008 == 11
+
+developed <- lc_2019 == 21 | lc_2019 == 22 | lc_2019 == 23 | lc_2019 == 24
+forest <- lc_2019 == 41 | lc_2019 == 42 | lc_2019 == 43 
+farm <- lc_2019 == 81 | lc_2019 == 82 
+wetlands <- lc_2019 == 90 | lc_2019 == 95 
+otherUndeveloped <- lc_2019 == 52 | lc_2019 == 71 | lc_2019 == 31 
+water <- lc_2019 == 11
+
+names(developed) <- "developed"
+names(forest) <- "forest"
+names(farm) <- "farm"
+names(wetlands) <- "wetlands"
+names(otherUndeveloped) <- "otherUndeveloped"
+names(water) <- "water"
+```   
+
+
+
+
+
+```{r create Aggregate raster}
+
+aggregateRaster <- function(inputRasterList, AtlantaMSA_fishnet) 
+  #create an empty fishnet with the same dimensions as the input fishnet
+  theseFishnets <- AtlantaMSA_fishnet %>% dplyr::select()
+  #for each raster in the raster list
+  for (i in inputRasterList) {
+  #create a variable name corresponding to the ith raster
+  varName <- names(i)
+  #convert raster to points as an sf
+    thesePoints <-
+      rasterToPoints(i) %>%
+      as.data.frame() %>%
+      st_as_sf(coords = c("x", "y"), crs = st_crs(AtlantaMSA_fishnet)) %>%
+      filter(.[[1]] == 1)
+  #aggregate to the fishnet
+    thisFishnet <-
+      aggregate(thesePoints, theFishnet, length) %>%
+      mutate(!!varName := ifelse(is.na(.[[1]]),0,1))
+  #add to the larger fishnet
+    theseFishnets <- cbind(theseFishnets,thisFishnet)
+  }
+  #output all aggregates as one large fishnet
+   return(theseFishnets)
+
+```
+
+```{r}
+theRasterList <- c(developed,forest,farm,wetlands,otherUndeveloped,water)
+
+aggregatedRasters <-
+  aggregateRaster(theRasterList, houstonMSA_fishnet) %>%
+  dplyr::select(developed,forest,farm,wetlands,otherUndeveloped,water) %>%
+  mutate_if(is.numeric,as.factor)
+
+aggregatedRasters %>%
+  gather(var,value,developed:water) %>%
+  st_cast("POLYGON") %>%    #just to make sure no weird geometries slipped in
+  mutate(X = xyC(.)$x,
+         Y = xyC(.)$y) %>%
+  ggplot() +
+    geom_sf(data=houstonMSA) +
+    geom_point(aes(X,Y, colour=as.factor(value))) +
+    facet_wrap(~var) +
+    scale_colour_manual(values = palette2,
+                        labels=c("Other","Land Cover"),
+                        name = "") +
+    labs(title = "Land Cover Types, 2001",
+         subtitle = "As fishnet centroids") +
+   mapTheme
+
+
+
+```
 ## Land Use
 
 ## Population
