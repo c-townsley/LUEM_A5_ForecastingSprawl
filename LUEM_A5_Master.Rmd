@@ -115,6 +115,13 @@ Data level: Census tract
 <br>
 
 # Data Gathering and Feature Engineering
+```{r creating GeoJSON from Shapefile}
+library(sf)
+SHP1 <- st_read("C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Shapefiles/SHP1.shp")
+
+GeoJSON1 <- st_write(SHP1, "C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/GeoJSONs/SHP1.geojson")
+
+```
 
 ```{r fishnet}
 #ideal fishnet cell size is 2000'x2000'
