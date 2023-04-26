@@ -115,7 +115,7 @@ Data level: Census tract
 <br>
 
 # Data Gathering and Feature Engineering
-```{r creating GeoJSON from Shapefile}
+```{r creating GeoJSON from Shapefile, include=FALSE}
 library(sf)
 SHP1 <- st_read("C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Shapefiles/SHP1.shp")
 
@@ -123,20 +123,33 @@ GeoJSON1 <- st_write(SHP1, "C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_D
 
 ```
 
-```{r fishnet}
-#ideal fishnet cell size is 2000'x2000'
-```
+Pull the Atlanta MSA boundary with the `tigris` package.
 
 ```{r Atlanta MSA shapefile}
+#First pull all MSAs in the U.S., then search for yours and filter with the correct CBSAFP code
 metro_boundary <- core_based_statistical_areas(cb = TRUE, resolution = "500k", year = NULL) %>% 
   filter(CBSAFP == "12060")
 
+#set projection
+st_transform('ESRI:102741')
+
+#plot MSA boundary to make sure its right
 ggplot(metro_boundary) + 
   geom_sf() + 
   theme_bw() + 
   labs(title = "TIGER/Line")
 ```
+```{r msa conversion, include=FALSE, eval=FALSE}
+#Convert shapefile to geojson so can store on github
+st_write(metro_boundary, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/Atlanta_Metro_Boundary.geojson")
+```
 
+
+Create a fishnet of the Atlanta metro using 2000'x2000' cells.
+
+```{r fishnet}
+#ideal fishnet cell size is 2000'x2000'
+```
 
 ## Landcover
 
