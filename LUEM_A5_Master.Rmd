@@ -205,16 +205,22 @@ ggplot()+
 ### Land Cover Individual Years
 
 ```{r Import Land Cover data}
-lc_2008 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/cfd6db18d222958b58a1d9169fe261fd5578d277/Data/raster/2008LC.tif")
+rast_projection <- "+proj=tmerc +lat_0=30 +lon_0=-84.16666666666667 +k=0.9999 +x_0=700000 +y_0=0 +ellps=GRS80 +units=m +no_defs"
 
+lc_2008 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/cfd6db18d222958b58a1d9169fe261fd5578d277/Data/raster/2008LC.tif")
+    
 lc_2019 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/cfd6db18d222958b58a1d9169fe261fd5578d277/Data/raster/2019LC.tif")
+
+#set projections
+projection(lc_2008) <- rast_projection
+projection(lc_2019) <- rast_projection
 
 ```
 
 ```{r Plot land cover for 2008 and 2019, fig.width=8}
 ### This works but does not visualize correctly
 
-grid.arrange(ncol = 2,
+grid.arrange(ncol = 1,
 ggplot() +
   geom_sf(data = metro_counties, 
           color = "black", fill = "transparent") +
@@ -272,8 +278,6 @@ names(water19) <- "water19"
 
 
 ```{r create Aggregate raster function}
-### This is just pasted from the markdown.
-
 aggregateRaster <- function(inputRasterList, AtlantaMSA_fishnet) {
   #create an empty fishnet with the same dimensions as the input fishnet
   theseFishnets <- AtlantaMSA_fishnet %>% dplyr::select()
@@ -311,8 +315,8 @@ aggregatedRasters08 <-
   dplyr::select(developed08, forest08, farm08, wetlands08, otherUndeveloped08, water08) %>%
   mutate_if(is.numeric, as.factor)
 
-aggregatedRasters %>%
-  gather(var,value,developed:water) %>%
+aggregatedRasters08 %>%
+  gather(var,value,developed08:water08) %>%
   st_cast("POLYGON") %>%    #just to make sure no weird geometries slipped in
   mutate(X = xyC(.)$x,
          Y = xyC(.)$y) %>%
