@@ -205,8 +205,10 @@ ggplot()+
 ### Land Cover Individual Years
 
 ```{r Import Land Cover data}
-rast_projection <- "+proj=tmerc +lat_0=30 +lon_0=-84.16666666666667 +k=0.9999 +x_0=700000 +y_0=0 +ellps=GRS80 +units=m +no_defs"
+#Set raster projection to match shapefile projection we are using
+rast_projection <- "+proj=tmerc +lat_0=30 +lon_0=-84.1666666666667 +k=0.9999 +x_0=700000 +y_0=0 +ellps=GRS80 +towgs84=0.9956,-1.9013,-0.5215,-0.025915,-0.009426,-0.011599,0.00062 +units=m +no_defs"
 
+#load rasters
 lc_2008 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/cfd6db18d222958b58a1d9169fe261fd5578d277/Data/raster/2008LC.tif")
     
 lc_2019 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/cfd6db18d222958b58a1d9169fe261fd5578d277/Data/raster/2019LC.tif")
@@ -215,9 +217,13 @@ lc_2019 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/cfd6
 projection(lc_2008) <- rast_projection
 projection(lc_2019) <- rast_projection
 
+#Mask rasters
+lc_2008 <- mask(x = lc_2008, mask = metro_counties)
+lc_2019 <- mask(x = lc_2019, mask = metro_counties)
+
 ```
 
-```{r Plot land cover for 2008 and 2019, fig.width=8, fig.height=10}
+```{r Plot land cover for 2008 and 2019}
 ### This works but does not visualize correctly
 
 grid.arrange(ncol = 1,
@@ -241,14 +247,22 @@ ggplot() +
   theme(legend.direction="horizontal")
 )
 
+# test code
 ggplot() +
-  geom_sf(data=Atlanta_MSA) +
-  geom_raster(data=rast(lc_2008) %>% na.omit %>% filter(value > 0), 
+  geom_raster(data=rast(lc_2008), 
               aes(x,y,fill=as.factor(value))) +
-  scale_fill_viridis(discrete=TRUE, name ="") +
+  scale_fill_viridis(discrete=TRUE, name ="", option = "C") +
   labs(title = "Land Cover, 2008") +
   mapTheme +
   theme(legend.direction="horizontal")
+  
+  
+  coord_sf(xlim = c(-85.39, -83.27), ylim = c(32.84, 34.62))
+
+ggplot() +
+  geom_sf(data=metro_counties,  fill = "transparent") +
+  labs(title = "Land Cover, 2008") +
+  mapTheme
 
 ```
 
