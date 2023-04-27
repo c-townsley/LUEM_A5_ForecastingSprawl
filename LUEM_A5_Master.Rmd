@@ -217,23 +217,22 @@ projection(lc_2019) <- rast_projection
 
 ```
 
-```{r Plot land cover for 2008 and 2019, fig.width=8}
+```{r Plot land cover for 2008 and 2019, fig.width=8, fig.height=10}
 ### This works but does not visualize correctly
 
 grid.arrange(ncol = 1,
 ggplot() +
-  geom_sf(data = metro_counties, 
-          color = "black", fill = "transparent") +
   geom_raster(data=rast(lc_2008) %>% na.omit %>% filter(value > 0), 
               aes(x,y,fill=as.factor(value))) +
   scale_fill_viridis(discrete=TRUE, name ="") +
+  geom_sf(data=Atlanta_MSA, fill = "transparent") +
   labs(title = "Land Cover, 2008") +
   mapTheme +
   theme(legend.direction="horizontal"),
 
+
 ggplot() +
-  geom_sf(data = metro_counties, 
-          color = "black", fill = "transparent") +
+  geom_sf(data=Atlanta_MSA,  fill = "transparent") +
   geom_raster(data=rast(lc_2019) %>% na.omit %>% filter(value > 0), 
               aes(x,y,fill=as.factor(value))) +
   scale_fill_viridis(discrete=TRUE, name ="") +
