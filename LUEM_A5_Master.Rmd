@@ -71,12 +71,14 @@ mapTheme <- theme(plot.title =element_text(size=12),
                   plot.margin = margin(1, 1, 1, 1, 'cm'),
                   legend.key.height = unit(1, "cm"), legend.key.width = unit(0.2, "cm"))
 
-palette2 <- c("#41b6c4","#253494")
-palette4 <- c("#a1dab4","#41b6c4","#2c7fb8","#253494")
-palette5 <- c("#ffffcc","#a1dab4","#41b6c4","#2c7fb8","#253494")
-palette10 <- c("#f7fcf0","#e0f3db","#ccebc5","#a8ddb5","#7bccc4",
-               "#4eb3d3","#2b8cbe","#0868ac","#084081","#f7fcf0")
+palette2 <- c("#0D0887FF","#FA9E3BFF")
+palette4 <- c("#0D0887FF","#9C179EFF","#D8576BFF","#FA9E3BFF")
+palette5 <- c("#0D0887FF","#9C179EFF","#D8576BFF","#ED7953FF","#FDC926FF")
+palette10 <- c("#0D0887FF","#47039FFF","#7301A8FF","#9C179EFF","#BD3786FF",
+               "#D8576BFF","#ED7953FF","#FA9E3BFF","#FDC926FF","#F0F921FF")
 ```
+
+
 
 ```{r functions}
 #this function converts a column in to quintiles. It is used for mapping.
@@ -122,8 +124,6 @@ Data level: Census tract
 # Data Gathering and Feature Engineering
 
 ```{r creating GeoJSON from Shapefile, include=FALSE, eval=FALSE}
-
-library(sf)
 #SHP1 <- st_read("C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Shapefiles/SHP1.shp")
 
 #GeoJSON1 <- st_write(SHP1, "C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/GeoJSONs/SHP1.geojson")
@@ -388,8 +388,6 @@ aggregatedRasters %>%
 
 
 ```
-
-## Land Use
 
 
 ## Census Data: Population
