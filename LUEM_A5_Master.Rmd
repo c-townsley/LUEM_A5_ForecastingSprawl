@@ -11,14 +11,14 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 rm(list=ls())
 
 options(scipen = 999) #turn off scientific notation
+```
+
+```{r libraries and themes}
 #install.packages("FNN")
 #install.packages("ggrepel")
 #install.packages("yardstick")
 #install.packages("igraph")
 
-```
-
-```{r libraries and themes}
 library(tidyverse)
 library(sf)
 library(raster)
@@ -104,7 +104,7 @@ rast <- function(inRaster) {
 ```
 
 
-# Introduction!
+# Introduction
 
 Region of interest: Atlanta, GA metro
 
@@ -436,6 +436,8 @@ Pop19 <-
 grid.arrange(
 ggplot() +
   geom_sf(data = Pop09, aes(fill=factor(ntile(pop09,5))), colour=NA) +
+  geom_sf(data = Atlanta_MSA, 
+          color = "black", fill = "transparent", linewidth = .75) +
   scale_fill_manual(values = palette5,
                     labels=quintileBreaks(Pop09,"pop09"),
                    name="Quintile\nBreaks") +
@@ -447,6 +449,8 @@ ggplot() +
   scale_fill_manual(values = palette5,
                     labels=quintileBreaks(Pop19,"pop19"),
                    name="Quintile\nBreaks") +
+  geom_sf(data = Atlanta_MSA, 
+          color = "black", fill = "transparent", linewidth = .75) +
   labs(title="2019 Population\nAtlanta 21-County MSA") +
   mapTheme, ncol=2)
 ```
@@ -495,6 +499,8 @@ ggplot() +
   scale_fill_manual(values = palette5,
                     labels=substr(quintileBreaks(Pop19,"pop19"),1,4),
                    name="Quintile\nBreaks") +
+  geom_sf(data = Atlanta_MSA, 
+          color = "black", fill = "transparent", linewidth = .75) +
   labs(title="2019 Population\nAtlanta 21-County MSA",
        subtitle="Represented as tracts; Boundaries omitted") +
   mapTheme,
@@ -504,6 +510,8 @@ ggplot() +
   scale_fill_manual(values = palette5,
                    labels=substr(quintileBreaks(fishnetPop,"pop19"),1,4),
                    name="Quintile\nBreaks") +
+  geom_sf(data = Atlanta_MSA, 
+          color = "black", fill = "transparent", linewidth = .75) +
   labs(title="2019 Population\nAtlanta 21-County MSA",
        subtitle="Represented as fishnet gridcells; Boundaries omitted") +
   mapTheme, ncol=2)
@@ -530,7 +538,8 @@ AtlantaHighways <-
 
 #INCLUDE NEW DEVELOPMENT IN PLOT ONCE THAT CODE IS WRITTEN
 ggplot() +
-  geom_sf(data=metro_counties) +
+  geom_sf(data = Atlanta_MSA, 
+          color = "black", linewidth = .75) +
   geom_sf(data=AtlantaHighways) +
   labs(title = "Highways") +
   mapTheme
