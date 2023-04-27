@@ -18,6 +18,8 @@ options(scipen = 999) #turn off scientific notation
 #install.packages("ggrepel")
 #install.packages("yardstick")
 #install.packages("igraph")
+#install.packages("caret")
+#update.packages("caret")
 
 library(tidyverse)
 library(sf)
@@ -199,6 +201,7 @@ ggplot()+
 
 
 ## Landcover
+### Land Cover Individual Years
 
 ```{r Import Land Cover data}
 lc_2008 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/cfd6db18d222958b58a1d9169fe261fd5578d277/Data/raster/2008LC.tif")
@@ -208,102 +211,34 @@ lc_2019 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/cfd6
 ```
 
 ```{r Plot land cover for 2008 and 2019}
+### This works but does not visualize correctly
 
 grid.arrange(ncol = 2,
 ggplot() +
-  geom_sf(data=metro_boundary) +
+   geom_sf(data = metro_counties, 
+          color = "black", fill = "transparent") +
   geom_raster(data=rast(lc_2008) %>% na.omit %>% filter(value > 0), 
               aes(x,y,fill=as.factor(value))) +
   scale_fill_viridis(discrete=TRUE, name ="") +
   labs(title = "Land Cover, 2008") +
   mapTheme +
-  theme(legend.direction="horizontal")
-       +
-  mapTheme,
+  theme(legend.direction="horizontal"),
 
 ggplot() +
-  geom_sf(data=metro_boundary) +
+   geom_sf(data = metro_counties, 
+          color = "black", fill = "transparent") +
   geom_raster(data=rast(lc_2019) %>% na.omit %>% filter(value > 0), 
               aes(x,y,fill=as.factor(value))) +
   scale_fill_viridis(discrete=TRUE, name ="") +
   labs(title = "Land Cover, 2019") +
   mapTheme +
   theme(legend.direction="horizontal")
-       +
-  mapTheme)
-
-```
-
-
-```{r define Reclassify Matrix}
-reclassMatrix <- 
-  matrix(c(
-    0,12,0,
-    12,24,1,
-    24,Inf,0),
-  ncol=3, byrow=T)
-
-reclassMatrix
-
-```
-
-``` {r}
-lc_2008r <- 
-  reclassify(lc_2008,reclassMatrix)
-
-lc_2008r[lc_2008r < 1] <- NA
-
-names(lc_2008r) <- "lc_change08"
-
-
-lc_2019r <- 
-  reclassify(lc_2019,reclassMatrix)
-
-lc_2019r[lc_2019r < 1] <- NA
-
-names(lc_2019r) <- "lc_change19"
-
-
-
-
-ggplot() +
-  geom_sf(data=AtlantaMSA_fishnet) +
-  geom_raster(data=rast(lc_2008r) %>% na.omit, 
-              aes(x,y,fill=as.factor(value))) +
-  scale_fill_viridis(discrete=TRUE, name ="Land Cover\nChange") + 
-  labs(title="Development Land Use Change") +
-  mapTheme
-
-
-```
-
-
-```{r converting fishnet to centroids}
-changePoints <-
-  rasterToPoints(lc_2008r) %>%
-  as.data.frame() %>%
-  st_as_sf(coords = c("x", "y"), crs = st_crs(AtlantaMSA_fishnet))
-
-fishnet <- 
-  aggregate(changePoints, AtlantaMSA_fishnet, sum) %>%
-  mutate(lc_2008r = ifelse(is.na(lc_2008r),0,1),
-         lc_2008r = as.factor(lc_2008r))
-
-ggplot() +
-  geom_sf(data = metro_boundary) +
-  geom_point(data = AtlantaMSA_fishnet, 
-             aes(x=xyC(AtlantaMSA_fishnet)$x, y=xyC(AtlantaMSA_fishnet)$y, colour=lc_2008r)) +
-  scale_colour_manual(values = palette2,
-                      labels=c("No Change","New Development"),
-                      name = "") +
-  labs(title = "Land Cover Development Change", subtitle = "As fishnet centroids") +
-  mapTheme
-
-
+)
 
 ```
 
 ```{r setup Land Cover}
+### I think this works but I am concerned that the lc_2019 overwrites the lc_2008...not sure yet
 
 developed <- lc_2008 == 21 | lc_2008 == 22 | lc_2008 == 23 | lc_2008 == 24
 forest <- lc_2008 == 41 | lc_2008 == 42 | lc_2008 == 43 
@@ -341,42 +276,13 @@ names(otherUndeveloped) <- "otherUndeveloped"
 names(water) <- "water"
 ```   
 
-
-
-
-
-```{r create Aggregate raster}
-
-aggregateRaster <- function(inputRasterList, AtlantaMSA_fishnet) 
-  #create an empty fishnet with the same dimensions as the input fishnet
-  theseFishnets <- AtlantaMSA_fishnet %>% dplyr::select()
-  #for each raster in the raster list
-  for (i in inputRasterList) {
-  #create a variable name corresponding to the ith raster
-  varName <- names(i)
-  #convert raster to points as an sf
-    thesePoints <-
-      rasterToPoints(i) %>%
-      as.data.frame() %>%
-      st_as_sf(coords = c("x", "y"), crs = st_crs(AtlantaMSA_fishnet)) %>%
-      filter(.[[1]] == 1)
-  #aggregate to the fishnet
-    thisFishnet <-
-      aggregate(thesePoints, theFishnet, length) %>%
-      mutate(!!varName := ifelse(is.na(.[[1]]),0,1))
-  #add to the larger fishnet
-    theseFishnets <- cbind(theseFishnets,thisFishnet)
-  }
-  #output all aggregates as one large fishnet
-   return(theseFishnets)
-
-```
-
 ```{r}
+
 theRasterList <- c(developed,forest,farm,wetlands,otherUndeveloped,water)
 
+### This part has a dataframe issue
 aggregatedRasters <-
-  aggregateRaster(theRasterList, houstonMSA_fishnet) %>%
+  aggregateRaster(theRasterList, AtlantaMSA_fishnet) %>%
   dplyr::select(developed,forest,farm,wetlands,otherUndeveloped,water) %>%
   mutate_if(is.numeric,as.factor)
 
@@ -395,10 +301,114 @@ aggregatedRasters %>%
     labs(title = "Land Cover Types, 2001",
          subtitle = "As fishnet centroids") +
    mapTheme
+```
+
+
+```{r create Aggregate raster}
+### This is just pasted from the markdown.
+
+aggregateRaster <- function(inputRasterList, theFishnet) {
+  #create an empty fishnet with the same dimensions as the input fishnet
+  theseFishnets <- theFishnet %>% dplyr::select()
+  #for each raster in the raster list
+  for (i in inputRasterList) {
+  #create a variable name corresponding to the ith raster
+  varName <- names(i)
+  #convert raster to points as an sf
+    thesePoints <-
+      rasterToPoints(i) %>%
+      as.data.frame() %>%
+      st_as_sf(coords = c("x", "y"), crs = st_crs(theFishnet)) %>%
+      filter(.[[1]] == 1)
+  #aggregate to the fishnet
+    thisFishnet <-
+      aggregate(thesePoints, theFishnet, length) %>%
+      mutate(!!varName := ifelse(is.na(.[[1]]),0,1))
+  #add to the larger fishnet
+    theseFishnets <- cbind(theseFishnets,thisFishnet)
+  }
+  #output all aggregates as one large fishnet
+   return(theseFishnets)
+  }
+ 
+
+```
+
+
+### Land Cover Change
+
+```{r define Reclassify Matrix}
+### Should work to set up reclassify matrix
+
+reclassMatrix <- 
+  matrix(c(
+    0,12,0,
+    12,24,1,
+    24,Inf,0),
+  ncol=3, byrow=T)
+
+reclassMatrix
+
+```
+
+```{r}
+### should work
+
+lc_2008r <- 
+  reclassify(lc_2008,reclassMatrix)
+
+lc_2008r[lc_2008r < 1] <- NA
+
+names(lc_2008r) <- "lc_change08"
+
+
+lc_2019r <- 
+  reclassify(lc_2019,reclassMatrix)
+
+lc_2019r[lc_2019r < 1] <- NA
+
+names(lc_2019r) <- "lc_change19"
+
+ggplot() +
+  geom_sf(data=AtlantaMSA_fishnet) +
+  geom_raster(data=rast(lc_2008r) %>% na.omit, 
+              aes(x,y,fill=as.factor(value))) +
+  scale_fill_viridis(discrete=TRUE, name ="Land Cover\nChange") + 
+  labs(title="Development Land Use Change") +
+  mapTheme
+
+
+```
+
+
+```{r converting fishnet to centroids}
+
+### Not sure yet if this works lol
+
+changePoints <-
+  rasterToPoints(lc_2008r) %>%
+  as.data.frame() %>%
+  st_as_sf(coords = c("x", "y"), crs = st_crs(AtlantaMSA_fishnet))
+
+fishnet <- 
+  aggregate(changePoints, AtlantaMSA_fishnet, sum) %>%
+  mutate(lc_2008r = ifelse(is.na(lc_2008r),0,1),
+         lc_2008r = as.factor(lc_2008r))
+
+ggplot() +
+  geom_sf(data = metro_boundary) +
+  geom_point(data = AtlantaMSA_fishnet, 
+             aes(x=xyC(AtlantaMSA_fishnet)$x, y=xyC(AtlantaMSA_fishnet)$y, colour=lc_2008r)) +
+  scale_colour_manual(values = palette2,
+                      labels=c("No Change","New Development"),
+                      name = "") +
+  labs(title = "Land Cover Development Change", subtitle = "As fishnet centroids") +
+  mapTheme
 
 
 
 ```
+
 
 
 ## Census Data: Population
