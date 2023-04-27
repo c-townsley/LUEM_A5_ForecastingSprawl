@@ -74,7 +74,7 @@ mapTheme <- theme(plot.title =element_text(size=12),
                   plot.margin = margin(1, 1, 1, 1, 'cm'),
                   legend.key.height = unit(1, "cm"), legend.key.width = unit(0.2, "cm"))
 
-#Colors
+#Colors: Viridis Plasma (option "C")
 palette2 <- c("#0D0887FF","#FA9E3BFF")
 palette4 <- c("#0D0887FF","#9C179EFF","#D8576BFF","#FA9E3BFF")
 palette5 <- c("#0D0887FF","#9C179EFF","#D8576BFF","#ED7953FF","#FDC926FF")
@@ -234,12 +234,21 @@ ggplot() +
 ggplot() +
   geom_sf(data=Atlanta_MSA,  fill = "transparent") +
   geom_raster(data=rast(lc_2019) %>% na.omit %>% filter(value > 0), 
-              aes(x,y,fill=as.factor(value))) +
+              aes(x, y, fill=as.factor(value))) +
   scale_fill_viridis(discrete=TRUE, name ="") +
   labs(title = "Land Cover, 2019") +
   mapTheme +
   theme(legend.direction="horizontal")
 )
+
+ggplot() +
+  geom_sf(data=Atlanta_MSA) +
+  geom_raster(data=rast(lc_2008) %>% na.omit %>% filter(value > 0), 
+              aes(x,y,fill=as.factor(value))) +
+  scale_fill_viridis(discrete=TRUE, name ="") +
+  labs(title = "Land Cover, 2008") +
+  mapTheme +
+  theme(legend.direction="horizontal")
 
 ```
 
