@@ -39,6 +39,7 @@ library(grid)
 library(gridExtra)
 library(viridis)
 library(igraph)
+library(maptools)
 
 plotTheme <- theme(
   plot.title =element_text(size=12),
@@ -73,12 +74,15 @@ mapTheme <- theme(plot.title =element_text(size=12),
                   plot.margin = margin(1, 1, 1, 1, 'cm'),
                   legend.key.height = unit(1, "cm"), legend.key.width = unit(0.2, "cm"))
 
-palette2 <- c("#41b6c4","#253494")
-palette4 <- c("#a1dab4","#41b6c4","#2c7fb8","#253494")
-palette5 <- c("#ffffcc","#a1dab4","#41b6c4","#2c7fb8","#253494")
-palette10 <- c("#f7fcf0","#e0f3db","#ccebc5","#a8ddb5","#7bccc4",
-               "#4eb3d3","#2b8cbe","#0868ac","#084081","#f7fcf0")
+#Colors
+palette2 <- c("#0D0887FF","#FA9E3BFF")
+palette4 <- c("#0D0887FF","#9C179EFF","#D8576BFF","#FA9E3BFF")
+palette5 <- c("#0D0887FF","#9C179EFF","#D8576BFF","#ED7953FF","#FDC926FF")
+palette10 <- c("#0D0887FF","#47039FFF","#7301A8FF","#9C179EFF","#BD3786FF",
+               "#D8576BFF","#ED7953FF","#FA9E3BFF","#FDC926FF","#F0F921FF")
 ```
+
+
 
 ```{r functions}
 #this function converts a column in to quintiles. It is used for mapping.
@@ -124,8 +128,6 @@ Data level: Census tract
 # Data Gathering and Feature Engineering
 
 ```{r creating GeoJSON from Shapefile, include=FALSE, eval=FALSE}
-
-library(sf)
 #SHP1 <- st_read("C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Shapefiles/SHP1.shp")
 
 #GeoJSON1 <- st_write(SHP1, "C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/GeoJSONs/SHP1.geojson")
@@ -152,10 +154,15 @@ metro_counties <- counties(state = "GA", cb = TRUE, resolution = "500k", year = 
   filter(NAME %in% Counties) %>% 
   st_transform("ESRI:102267")
 
+#Merge counties into one shapefile showing just the boundary
+Atlanta_MSA <- st_union(metro_counties)
+
 #plot MSA boundary to make sure its right
-ggplot(metro_counties) + 
-  geom_sf() + 
-  theme_bw() + 
+ggplot() + 
+  geom_sf(data = metro_counties) +
+  geom_sf(data = Atlanta_MSA, 
+          color = "black", fill = "transparent", linewidth = .75) +
+  mapTheme + 
   labs(title = "Atlanta 21 County MSA")
 ```
 
@@ -165,6 +172,10 @@ ggplot(metro_counties) +
 st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/Atlanta_Metro_Counties.geojson")
 
 st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/shapefile/Atlanta_Metro_Boundary/Atlanta_Metro_Counties.shp")
+
+st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/AtlantaMSA_Boundary_21counties.geojson")
+
+st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/shapefile/Atlanta_Metro_Boundary_21county/AtlantaMSA_Boundary_21counties.shp")
 ```
 
 
@@ -182,8 +193,8 @@ AtlantaMSA_fishnet <-
 ggplot()+
   geom_sf(data = AtlantaMSA_fishnet,
           fill = "lightgrey") +
-  geom_sf(data = metro_counties, 
-          color = "black", fill = "transparent") +
+  geom_sf(data = Atlanta_MSA, 
+          color = "black", fill = "transparent", linewidth = .75) +
   labs(title = "Atlanta MSA Fishnet") +
   mapTheme
 ```
@@ -400,10 +411,6 @@ ggplot() +
 
 
 
-
-## Land Use
-
-
 ## Census Data: Population
 
 Download population data for 2009.
@@ -491,7 +498,7 @@ fishnetPop <-
 
 Compare population by tract vs pop by grid cell
 
-```{r plot pop tract and grid cell}
+```{r plot pop tract and grid cell, fig.width=8}
 grid.arrange(
 ggplot() +
   geom_sf(data=Pop19, aes(fill=factor(ntile(pop19,5))),colour=NA) +
@@ -517,6 +524,7 @@ ggplot() +
 Load in highway data.
 
 ```{r highway to geojson, include=FALSE, eval=FALSE}
+#Skip
 metro_highways <- st_read("C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/shapefile/AtlantaMetro_Major_Roads/Major_Roads.shp")
 
 st_write(metro_highways, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/Major_Roads.geojson")
@@ -537,10 +545,78 @@ ggplot() +
   labs(title = "Highways") +
   mapTheme
 ```
+Convert highway layer to raster then convert raster to points then mean distance from highway points is calculated by grid cell.
+```{r dist from highways}
+emptyRaster <- lc_change
+emptyRaster[] <- NA
+
+highway_raster <- 
+  as(AtlantaHighways,'Spatial') %>%
+  rasterize(.,emptyRaster)
+
+highway_raster_distance <- distance(highway_raster)
+names(highway_raster_distance) <- "distance_highways"
+
+highwayPoints <-
+  rasterToPoints(highway_raster_distance) %>%
+  as.data.frame() %>%
+  st_as_sf(coords = c("x", "y"), crs = st_crs(AtlantaMSA_fishnet))
+
+highwayPoints_fishnet <- 
+  aggregate(highwayPoints, AtlantaMSA_fishnet, mean) %>%
+  mutate(distance_highways = ifelse(is.na(distance_highways),0,distance_highways))
+
+ggplot() +
+  geom_sf(data=metro_counties) +
+  geom_point(data=highwayPoints_fishnet, aes(x=xyC(highwayPoints_fishnet)[,1], 
+                                             y=xyC(highwayPoints_fishnet)[,2], 
+                 colour=factor(ntile(distance_highways,5))),size=1.5) +
+  scale_colour_manual(values = palette5,
+                      labels=substr(quintileBreaks(highwayPoints_fishnet,"distance_highways"),1,8),
+                      name="Quintile\nBreaks") +
+  geom_sf(data=metro_highways, colour = "red") +
+  labs(title = "Distance to Highways",
+       subtitle = "As fishnet centroids; Highways visualized in red") +
+  mapTheme
+```
 
 
 
-## Development
+## Calculating the Spatial Lag of Development
+
+We measure accessibility by way of a spatial lag hypothesizing that new development is a function of distance to existing development. The shorter the distance, the more accessible a grid cell is to existing development. We measure this by calculating the average distance from each grid cell to its 2 nearest developed neighboring grid cells in 2009.
+
+```{r development spatial lag}
+thisFishnet$lagDevelopment <-
+    nn_function(xyC(thisFishnet),
+                xyC(filter(aggregatedRasters,developed==1)),
+                2)
+
+ggplot() +
+  geom_sf(data=metro_counties) +
+  geom_point(data=thisFishnet, 
+             aes(x=xyC(thisFishnet)[,1], y=xyC(thisFishnet)[,2], 
+                 colour=factor(ntile(lagDevelopment,5))), size=1.5) +
+  scale_colour_manual(values = palette5,
+                     labels=substr(quintileBreaks(thisFishnet,"lagDevelopment"),1,7),
+                     name="Quintile\nBreaks") +
+  labs(title = "Spatial Lag to 2001 Development",
+       subtitle = "As fishnet centroids") +
+  mapTheme
+
+ggplot() +
+  geom_sf(data=houstonMSA) +
+  geom_point(data=thisFishnet, 
+             aes(x=xyC(thisFishnet)$x, y=xyC(thisFishnet)$y, colour=lc_change)) +
+  scale_colour_manual(values = palette2,
+                      labels=c("No Change","New Development"),
+                      name = "") +
+  labs(title = "Land Cover Development Change", subtitle = "As fishnet centroids") +
+  mapTheme
+```
+
+
+
 
 <br>
 
