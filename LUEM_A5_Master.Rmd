@@ -103,6 +103,31 @@ rast <- function(inRaster) {
   data.frame(
     xyFromCell(inRaster, 1:ncell(inRaster)), 
     value = getValues(inRaster)) }
+
+#this function aggregates rasters
+aggregateRaster <- function(inputRasterList, AtlantaMSA_fishnet) {
+  #create an empty fishnet with the same dimensions as the input fishnet
+  theseFishnets <- AtlantaMSA_fishnet %>% dplyr::select()
+  #for each raster in the raster list
+  for (i in inputRasterList) {
+  #create a variable name corresponding to the ith raster
+  varName <- names(i)
+  #convert raster to points as an sf
+    thesePoints <-
+      rasterToPoints(i) %>%
+      as.data.frame() %>%
+      st_as_sf(coords = c("x", "y"), crs = st_crs(AtlantaMSA_fishnet)) %>%
+      filter(.[[1]] == 1)
+  #aggregate to the fishnet
+    thisFishnet <-
+      aggregate(thesePoints, AtlantaMSA_fishnet, length) %>%
+      mutate(!!varName := ifelse(is.na(.[[1]]),0,1))
+  #add to the larger fishnet
+    theseFishnets <- cbind(theseFishnets, thisFishnet)
+  }
+  #output all aggregates as one large fishnet
+   return(theseFishnets)
+  }
 ```
 
 
@@ -217,6 +242,20 @@ lc_2019 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/cfd6
 projection(lc_2008) <- rast_projection
 projection(lc_2019) <- rast_projection
 
+#downsize the raster
+lc_2008 <- aggregate(lc_2008, fact = 2, fun = modal)
+lc_2019 <- aggregate(lc_2019, fact = 2, fun = modal)
+
+#Export downsized rasters
+#writeRaster(lc_2008, filename=file.path("C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/raster", "lc2008_sml.tif"), format="GTiff", overwrite=TRUE)
+
+#writeRaster(lc_2019, filename=file.path("C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/raster", "lc2019_sml.tif"), format="GTiff", overwrite=TRUE)
+
+lc2011 <- raster("lc11mdds.tif") 
+lc2011 <- projectRaster(lc2011, crs = crs(PASEproj))
+lc2019 <- raster("lc19mdds.tif") 
+lc2019 <- projectRaster(lc2019, crs = crs(PASEproj)) 
+
 #Mask rasters
 lc_2008 <- mask(x = lc_2008, mask = metro_counties)
 lc_2019 <- mask(x = lc_2019, mask = metro_counties)
@@ -297,33 +336,6 @@ names(wetlands19) <- "wetlands19"
 names(otherUndeveloped19) <- "otherUndeveloped19"
 names(water19) <- "water19"
 ```   
-
-
-```{r create Aggregate raster function}
-aggregateRaster <- function(inputRasterList, AtlantaMSA_fishnet) {
-  #create an empty fishnet with the same dimensions as the input fishnet
-  theseFishnets <- AtlantaMSA_fishnet %>% dplyr::select()
-  #for each raster in the raster list
-  for (i in inputRasterList) {
-  #create a variable name corresponding to the ith raster
-  varName <- names(i)
-  #convert raster to points as an sf
-    thesePoints <-
-      rasterToPoints(i) %>%
-      as.data.frame() %>%
-      st_as_sf(coords = c("x", "y"), crs = st_crs(AtlantaMSA_fishnet)) %>%
-      filter(.[[1]] == 1)
-  #aggregate to the fishnet
-    AtlantaMSA_fishnet <-
-      aggregate(thesePoints, AtlantaMSA_fishnet, length) %>%
-      mutate(!!varName := ifelse(is.na(.[[1]]),0,1))
-  #add to the larger fishnet
-    theseFishnets <- cbind(theseFishnets, AtlantaMSA_fishnet)
-  }
-  #output all aggregates as one large fishnet
-   return(theseFishnets)
-  }
-```
 
 ```{r turn rasters into fishnet dataframe}
 
