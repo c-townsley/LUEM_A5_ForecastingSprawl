@@ -230,7 +230,7 @@ ggplot()+
 
 ## Landcover
 
-### Land Cover Individual Years
+### Land Cover by Year
 
 First, raster files of land cover for the Atlanta Metro area are imported from the NLCD.
 
@@ -270,7 +270,7 @@ lc_2008 <- raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/795
 lc_2019 <- raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/795eb6bf1286d55f5488473fb9a8f10dc7478fef/Data/raster/lc2019_sml.tif") 
 ```
 
-```{r Plot land cover for 2008 and 2019, fig.height=12, fig.width=8}
+```{r Plot land cover for 2008 and 2019, fig.height=13, fig.width=6}
 grid.arrange(ncol = 1,
 ggplot() +
   geom_raster(data=rast(lc_2008) %>% na.omit %>% filter(value > 0), 
@@ -305,6 +305,8 @@ ggplot() +
 
 Viewing land cover at the MSA level in 2008 and 2019 shows that change is happening at too small a scale to discern visually alone. Hence, the powers of R.
 
+### Land Cover by Type
+
 ```{r reclass Land Cover}
 #reclassify landcover into developed and not developed
 developed08 <- lc_2008 == 21 | lc_2008 == 22 | lc_2008 == 23 | lc_2008 == 24
@@ -336,20 +338,20 @@ names(otherUndeveloped19) <- "otherUndeveloped19"
 names(water19) <- "water19"
 ```   
 
-```{r turn rasters into fishnet dataframe}
+```{r turn rasters into fishnet dataframe, fig.width=8, fig.height=6}
 
 theRasterList08 <- c(developed08, forest08, farm08, wetlands08, otherUndeveloped08, water08)
 
 theRasterList19 <- c(developed19, forest19, farm19, wetlands19, otherUndeveloped19, water19)
 
 ### This part has a dataframe issue
-aggregatedRasters08 <-
-  aggregateRaster(theRasterList08, AtlantaMSA_fishnet) %>%
-  dplyr::select(developed08, forest08, farm08, wetlands08, otherUndeveloped08, water08) %>%
+aggregatedRasters19 <-
+  aggregateRaster(theRasterList19, AtlantaMSA_fishnet) %>%
+  dplyr::select(developed19, forest19, farm19, wetlands19, otherUndeveloped19, water19) %>%
   mutate_if(is.numeric, as.factor)
 
-aggregatedRasters08 %>%
-  gather(var,value,developed08:water08) %>%
+aggregatedRasters19 %>%
+  gather(var,value,developed19:water19) %>%
   st_cast("POLYGON") %>%    #just to make sure no weird geometries slipped in
   mutate(X = xyC(.)$x,
          Y = xyC(.)$y) %>%
@@ -360,17 +362,16 @@ aggregatedRasters08 %>%
     scale_colour_manual(values = palette2,
                         labels=c("Other","Land Cover"),
                         name = "") +
-    labs(title = "Land Cover Types, 2009",
+    labs(title = "Land Cover Types, 2019",
          subtitle = "As fishnet centroids") +
    mapTheme
 ```
-
+Mapping land cover by type in 2019 shows that most development is happening at the outer fringes of the MSA, but there are a notable number of undeveloped areas near the center.
 
 ### Land Cover Change
 
-```{r define Reclassify Matrix}
-### Should work to set up reclassify matrix
-
+```{r reclass matrix}
+#creat matrix for reclassifying land cover
 reclassMatrix <- 
   matrix(c(
     0,12,0,
@@ -379,43 +380,35 @@ reclassMatrix <-
   ncol=3, byrow=T)
 
 reclassMatrix
-
 ```
 
-```{r}
-### should work
-
+```{r land cover change}
+#reclassify land cover change using reclass matrix
 lc_2008r <- 
-  reclassify(lc_2008,reclassMatrix)
+  reclassify(lc_2008, reclassMatrix)
 
 lc_2008r[lc_2008r < 1] <- NA
 
 names(lc_2008r) <- "lc_change08"
 
-
-lc_2019r <- 
-  reclassify(lc_2019,reclassMatrix)
+lc_2019r <- reclassify(lc_2019, reclassMatrix)
 
 lc_2019r[lc_2019r < 1] <- NA
 
 names(lc_2019r) <- "lc_change19"
 
 ggplot() +
-  geom_sf(data=AtlantaMSA_fishnet) +
+  geom_sf(data=Atlanta_MSA) +
   geom_raster(data=rast(lc_2008r) %>% na.omit, 
               aes(x,y,fill=as.factor(value))) +
-  scale_fill_viridis(discrete=TRUE, name ="Land Cover\nChange") + 
-  labs(title="Development Land Use Change") +
+  scale_fill_viridis(discrete=TRUE,
+                     option="C",
+                     name ="Land Cover\nChange") + 
+  labs(title="Development Land Use Change") + #IS THIS ACTUALLY A MAP OF DEVELOPMENT LAND USE CHANGE?
   mapTheme
-
-
 ```
 
-
 ```{r converting fishnet to centroids}
-
-### Not sure yet if this works lol
-
 changePoints <-
   rasterToPoints(lc_2008r) %>%
   as.data.frame() %>%
@@ -423,11 +416,12 @@ changePoints <-
 
 fishnet <- 
   aggregate(changePoints, AtlantaMSA_fishnet, sum) %>%
-  mutate(lc_2008r = ifelse(is.na(lc_2008r),0,1),
+  mutate(lc_2008r = ifelse(is.na(lc_2008r),0,1))
+         ,
          lc_2008r = as.factor(lc_2008r))
 
 ggplot() +
-  geom_sf(data = metro_boundary) +
+  geom_sf(data = Atlanta_MSA) +
   geom_point(data = AtlantaMSA_fishnet, 
              aes(x=xyC(AtlantaMSA_fishnet)$x, y=xyC(AtlantaMSA_fishnet)$y, colour=lc_2008r)) +
   scale_colour_manual(values = palette2,
@@ -435,9 +429,6 @@ ggplot() +
                       name = "") +
   labs(title = "Land Cover Development Change", subtitle = "As fishnet centroids") +
   mapTheme
-
-
-
 ```
 
 
