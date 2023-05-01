@@ -194,7 +194,7 @@ ggplot() +
 
 
 ```{r msa conversion, include=FALSE, eval=FALSE}
-#### SKIP ####
+## SKIP ##
 #Convert shapefile to geojson so can store on github
 st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/Atlanta_Metro_Counties.geojson")
 
@@ -229,19 +229,22 @@ ggplot()+
 
 
 ## Landcover
+
 ### Land Cover Individual Years
 
-```{r Import full original Land Cover data}
+First, raster files of land cover for the Atlanta Metro area are imported from the NLCD.
+
+```{r Import full original Land Cover data, eval=FALSE}
 #load full size rasters
 lc_2008 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/56bd35b343d39e88bd8e1fdc89957e6ccb804fe9/Data/raster/2008LC_proj.tif")
     
 lc_2019 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/56bd35b343d39e88bd8e1fdc89957e6ccb804fe9/Data/raster/2019LC_proj.tif")
 ```
 
-The raster files are down sampled to make their size more manageable and then cropped to the MSA boundaries.
+The raster files are down sampled to make their size more manageable and then clipped to the MSA boundaries.
 
 ```{r downsample rasters crop and export, eval=FALSE}
-##### SKIP ####
+## SKIP ##
 
 #down sample the raster to make more manageable
 lc_2008 <- aggregate(lc_2008, fact = 2, fun = modal)
@@ -262,17 +265,15 @@ writeRaster(lc_2019_crop, filename=file.path("C:/Users/ctown/OneDrive - PennO365
 ```
 
 ```{r import downsampled rasters}
-lc_2008 <- raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/bcec3a195528bb480b2af74a90837472fb9e8acc/Data/raster/lc2008_sml.tif") 
-lc_2019 <- raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/bcec3a195528bb480b2af74a90837472fb9e8acc/Data/raster/lc2019_sml.tif") 
+lc_2008 <- raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/795eb6bf1286d55f5488473fb9a8f10dc7478fef/Data/raster/lc2008_sml.tif") 
+
+lc_2019 <- raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/795eb6bf1286d55f5488473fb9a8f10dc7478fef/Data/raster/lc2019_sml.tif") 
 ```
 
-View landcover for 2008 and 2019 together.
-
-
-```{r Plot land cover for 2008 and 2019, fig.height=10}
+```{r Plot land cover for 2008 and 2019, fig.height=12, fig.width=8}
 grid.arrange(ncol = 1,
 ggplot() +
-  geom_raster(data=rast(lc_2008_crop) %>% na.omit %>% filter(value > 0), 
+  geom_raster(data=rast(lc_2008) %>% na.omit %>% filter(value > 0), 
               aes(x,y,fill=as.factor(value))) +
   scale_fill_viridis(discrete=TRUE,
                      name ="",
@@ -287,7 +288,7 @@ ggplot() +
 
 
 ggplot() +
-  geom_raster(data=rast(lc_2019_crop) %>% na.omit %>% filter(value > 0), 
+  geom_raster(data=rast(lc_2019) %>% na.omit %>% filter(value > 0), 
               aes(x, y, fill=as.factor(value))) +
   scale_fill_viridis(discrete=TRUE,
                      name ="",
@@ -302,7 +303,9 @@ ggplot() +
 )
 ```
 
-```{r setup Land Cover}
+Viewing land cover at the MSA level in 2008 and 2019 shows that change is happening at too small a scale to discern visually alone. Hence, the powers of R.
+
+```{r reclass Land Cover}
 #reclassify landcover into developed and not developed
 developed08 <- lc_2008 == 21 | lc_2008 == 22 | lc_2008 == 23 | lc_2008 == 24
 forest08 <- lc_2008 == 41 | lc_2008 == 42 | lc_2008 == 43 
