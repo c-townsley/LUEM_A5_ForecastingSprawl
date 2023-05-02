@@ -261,9 +261,9 @@ lc_2008_crop <- mask(x = lc_2008_crop, mask = metro_counties)
 lc_2019_crop <- mask(x = lc_2019_crop, mask = metro_counties)
 
 #Export downsized rasters
-writeRaster(lc_2008_crop, filename=file.path("C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/raster", "lc2008_sml.tif"), format="GTiff", overwrite=TRUE)
+#writeRaster(lc_2008_crop, filename=file.path("C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/raster", "lc2008_sml.tif"), format="GTiff", overwrite=TRUE)
 
-writeRaster(lc_2019_crop, filename=file.path("C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/raster", "lc2019_sml.tif"), format="GTiff", overwrite=TRUE)
+#writeRaster(lc_2019_crop, filename=file.path("C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/raster", "lc2019_sml.tif"), format="GTiff", overwrite=TRUE)
 ```
 
 ```{r import downsampled rasters}
@@ -393,6 +393,8 @@ reclassMatrix
 
 ```{r developed land cover}
 #reclassify land cover change using reclass matrix
+###LINDSEY
+
 lc_2008r <- 
   reclassify(lc_2008, reclassMatrix)
 
@@ -422,6 +424,9 @@ ggplot() +
 ```
 
 ```{r land cover development change}
+### LINDSEY
+
+
 changePoints <-
   rasterToPoints(lc_2008r) %>%
   as.data.frame() %>%
