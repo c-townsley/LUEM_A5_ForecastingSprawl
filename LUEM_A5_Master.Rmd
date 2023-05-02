@@ -441,6 +441,16 @@ ggplot() +
   labs(title="Development Change 2008-2019", subtitle='Atlanta Metro Area; \nTRUE = Developed since 2008')+
   mapTheme)
   
+
+development_change[development_change != 1] <- NA
+
+ggplot() +
+  geom_sf(data=Atlanta_MSA) +
+  geom_raster(data=rast(development_change) %>% na.omit, 
+              aes(x,y,fill=as.factor(value))) +
+  scale_fill_viridis(discrete=TRUE, name ="Cells \nwith Land Cover\nChange") + 
+  labs(title="Development Land Cover Change") +
+  mapTheme
   
 ```
 
