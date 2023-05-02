@@ -397,30 +397,68 @@ reclassMatrix
 
 lc_2008r <- 
   reclassify(lc_2008, reclassMatrix)
+lc_2019r <- 
+  reclassify(lc_2019, reclassMatrix)
 
 lc_2008r[lc_2008r < 1] <- 0
-
 names(lc_2008r) <- "dev08"
 
-lc_2019r <- reclassify(lc_2019, reclassMatrix)
-
 lc_2019r[lc_2019r < 1] <- 0
-
 names(lc_2019r) <- "dev19"
 
+
+development_change <- lc_2008r + lc_2019r
+
+hist(development_change)
+```
+
+```{r plotting land cover change}
+grid.arrange(ncol = 2,
 ggplot() +
   geom_sf(data=Atlanta_MSA) +
-  geom_raster(data=rast(lc_2019r) %>% na.omit, 
+  geom_raster(data=rast(development_change) %>% na.omit, 
               aes(x,y, fill=as.factor(value))) +
     scale_colour_manual(values = c(gray, highlight),
-                        labels=c("False","True"),
-                        name = "") +
+                        labels=c("No Change, Undeveloped","Change","No Change, Developed"),
+                        name = c("No Change, Undeveloped","Change","No Change, Developed")) +
   geom_sf(data=metro_counties,
           color = "black",
           fill = "transparent",
           linewidth = .5) +
-  labs(title="Developed Areas (2019)", subtitle='Atlanta Metro Area') + #IS THIS ACTUALLY A MAP OF DEVELOPMENT LAND USE CHANGE?
+  labs(title="Development Change 2008-2019", subtitle='Atlanta Metro Area')+
+  mapTheme,
+
+
+ggplot() +
+  geom_sf(data=Atlanta_MSA) +
+  geom_raster(data=rast(development_change) %>% na.omit, 
+              aes(x,y, fill=as.factor(value==1))) +
+    scale_colour_manual(values = c(),
+                        labs(fill = "Development Change"),
+                        name = c("No Change, Undeveloped","Change","No Change, Developed")) +
+  geom_sf(data=metro_counties,
+          color = "black",
+          fill = "transparent",
+          linewidth = .5) +
+  labs(title="Development Change 2008-2019", subtitle='Atlanta Metro Area')+
+  mapTheme)
+
+
+ggplot() +
+  geom_sf(data=Atlanta_MSA) +
+  geom_raster(data=rast(development_change) %>% na.omit, 
+              aes(x,y, fill=as.factor(value==1))) +
+    scale_colour_manual(name = "Developed since 2008",
+                        values = c("blue", "white"),
+                        labels = "No Change", "Developed Since 2008") +
+  geom_sf(data=metro_counties,
+          color = "black",
+          fill = "transparent",
+          linewidth = .5) +
+  labs(title="Development Change 2008-2019", subtitle='Atlanta Metro Area')+
   mapTheme
+  
+  
 ```
 
 ```{r land cover development change}
