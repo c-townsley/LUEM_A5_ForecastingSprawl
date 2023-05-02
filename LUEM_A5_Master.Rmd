@@ -78,7 +78,6 @@ mapTheme <- theme(plot.title =element_text(size=12),
 gray <- "#D3D3D3"
 highlight <- "#0D0887FF"
 palette2 <- c("#FA9E3BFF", "#0D0887FF")
-palette3 <- c("#FDC926FF", "#D8576BFF", "#0D0887FF")
 palette4 <- c("#FA9E3BFF", "#D8576BFF", "#9C179EFF", "#0D0887FF")
 palette5 <- c("#FDC926FF", "#ED7953FF", "#D8576BFF", "#9C179EFF", "#0D0887FF")
 palette10 <- c("#F0F921FF", "#FDC926FF", "#FA9E3BFF", "#ED7953FF", "#D8576BFF",
@@ -419,14 +418,14 @@ ggplot() +
   geom_sf(data=Atlanta_MSA) +
   geom_raster(data=rast(development_change) %>% na.omit, 
               aes(x,y, fill=as.factor(value))) +
-    #scale_colour_manual(values = palette3,
-    #                    labels = c("No Change, Undeveloped", "Developed since 2008", "No Change, Developed"),
-                 #       name = "") +
+    scale_colour_manual(values = c(gray, highlight),
+                        labels=c("No Change, Undeveloped","Change","No Change, Developed"),
+                        name = c("No Change, Undeveloped","Change","No Change, Developed")) +
   geom_sf(data=metro_counties,
           color = "black",
           fill = "transparent",
           linewidth = .5) +
-  labs(title="Development Change 2008-2019", subtitle='Atlanta Metro Area; \n0 = No Change, Undeveloped, \n1 = Developed since 2008, \n2 = No Change, Developed')+
+  labs(title="Development Change 2008-2019", subtitle='Atlanta Metro Area')+
   mapTheme,
 
 
@@ -434,12 +433,30 @@ ggplot() +
   geom_sf(data=Atlanta_MSA) +
   geom_raster(data=rast(development_change) %>% na.omit, 
               aes(x,y, fill=as.factor(value==1))) +
+    scale_colour_manual(values = c(),
+                        labs(fill = "Development Change"),
+                        name = c("No Change, Undeveloped","Change","No Change, Developed")) +
   geom_sf(data=metro_counties,
           color = "black",
           fill = "transparent",
           linewidth = .5) +
-  labs(title="Development Change 2008-2019", subtitle='Atlanta Metro Area; \nTRUE = Developed since 2008')+
+  labs(title="Development Change 2008-2019", subtitle='Atlanta Metro Area')+
   mapTheme)
+
+
+ggplot() +
+  geom_sf(data=Atlanta_MSA) +
+  geom_raster(data=rast(development_change) %>% na.omit, 
+              aes(x,y, fill=as.factor(value==1))) +
+    scale_colour_manual(name = "Developed since 2008",
+                        values = c("blue", "white"),
+                        labels = "No Change", "Developed Since 2008") +
+  geom_sf(data=metro_counties,
+          color = "black",
+          fill = "transparent",
+          linewidth = .5) +
+  labs(title="Development Change 2008-2019", subtitle='Atlanta Metro Area')+
+  mapTheme
   
 
 development_change[development_change != 1] <- NA
@@ -617,23 +634,22 @@ AtlantaHighways <-
   st_intersection(metro_counties) %>% 
   filter(FEATURE_TY == "State Highway")
 
-#INCLUDE NEW DEVELOPMENT IN PLOT ONCE THAT CODE IS WRITTEN
 ggplot() +
   geom_sf(data = Atlanta_MSA, 
           color = "black", linewidth = .75) +
-  geom_point(data=fishnet, 
-             aes(x=xyC(AtlantaMSA_fishnet)[,1], y=xyC(AtlantaMSA_fishnet)[,2],colour=lc_change),size=1.5) +
-  scale_colour_manual(values = c(gray, highlight),
-                      labels=c("No Change","New Development")) +
-  geom_sf(data=AtlantaHighways) +
-  labs(title = "Highways") +
+  geom_raster(data=rast(development_change) %>% na.omit, 
+              aes(x,y, fill=as.factor(value==1))) +
+  geom_sf(data=AtlantaHighways, color="#9C179EFF") +
+  labs(title = "Highways and New Development") +
   mapTheme
 ```
+Calculate how far each fishnet cell is from a highway.
 Convert highway layer to raster then convert raster to points then mean distance from highway points is calculated by grid cell.
 ```{r dist from highways}
-emptyRaster <- lc_change
+emptyRaster <- development_change
 emptyRaster[] <- NA
 
+#create a raster layer of highways
 highway_raster <- 
   as(AtlantaHighways,'Spatial') %>%
   rasterize(.,emptyRaster)
@@ -658,7 +674,7 @@ ggplot() +
   scale_colour_manual(values = palette5,
                       labels=substr(quintileBreaks(highwayPoints_fishnet,"distance_highways"),1,8),
                       name="Quintile\nBreaks") +
-  geom_sf(data=metro_highways, colour = "red") +
+  geom_sf(data=AtlantaHighways, colour = "black") +
   labs(title = "Distance to Highways",
        subtitle = "As fishnet centroids; Highways visualized in red") +
   mapTheme
