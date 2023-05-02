@@ -624,18 +624,16 @@ AtlantaHighways <-
   st_intersection(metro_counties) %>% 
   filter(FEATURE_TY == "State Highway")
 
-#INCLUDE NEW DEVELOPMENT IN PLOT ONCE THAT CODE IS WRITTEN
 ggplot() +
   geom_sf(data = Atlanta_MSA, 
           color = "black", linewidth = .75) +
-  geom_point(data=fishnet, 
-             aes(x=xyC(AtlantaMSA_fishnet)[,1], y=xyC(AtlantaMSA_fishnet)[,2],colour=lc_change),size=1.5) +
-  scale_colour_manual(values = c(gray, highlight),
-                      labels=c("No Change","New Development")) +
-  geom_sf(data=AtlantaHighways) +
+  geom_raster(data=rast(development_change) %>% na.omit, 
+              aes(x,y, fill=as.factor(value==1))) +
+  geom_sf(data=AtlantaHighways, color="#9C179EFF") +
   labs(title = "Highways") +
   mapTheme
 ```
+
 Convert highway layer to raster then convert raster to points then mean distance from highway points is calculated by grid cell.
 ```{r dist from highways}
 emptyRaster <- lc_change
