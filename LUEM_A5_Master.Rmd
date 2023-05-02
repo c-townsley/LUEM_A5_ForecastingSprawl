@@ -208,11 +208,11 @@ st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Cla
 ```
 
 
-Create a fishnet of the Atlanta metro using 2000'x2000' cells.
+Create a fishnet of the Atlanta metro using 1000'x1000' cells.
 
 ```{r fishnet}
 AtlantaMSA_fishnet <- 
-  st_make_grid(metro_counties, cellsize = 2000, square = FALSE) %>%
+  st_make_grid(metro_counties, cellsize = 1000, square = FALSE) %>%
   st_sf() %>% 
   st_transform("ESRI:102267")
 
@@ -249,8 +249,8 @@ The raster files are down sampled to make their size more manageable and then cl
 ## SKIP ##
 
 #down sample the raster to make more manageable
-lc_2008 <- aggregate(lc_2008, fact = 2, fun = modal)
-lc_2019 <- aggregate(lc_2019, fact = 2, fun = modal)
+lc_2008 <- aggregate(lc_2008, fact = 7, fun = modal)
+lc_2019 <- aggregate(lc_2019, fact = 7, fun = modal)
 
 #crop rasters
 lc_2008_crop <- crop(lc_2008, extent(metro_counties))
@@ -267,9 +267,9 @@ writeRaster(lc_2019_crop, filename=file.path("C:/Users/ctown/OneDrive - PennO365
 ```
 
 ```{r import downsampled rasters}
-lc_2008 <- raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/795eb6bf1286d55f5488473fb9a8f10dc7478fef/Data/raster/lc2008_sml.tif") 
+lc_2008 <- raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/24f08e61c5ec983b3fa39f1f3b03fb90aa3a13ee/Data/raster/lc2008_sml.tif") 
 
-lc_2019 <- raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/795eb6bf1286d55f5488473fb9a8f10dc7478fef/Data/raster/lc2019_sml.tif") 
+lc_2019 <- raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/24f08e61c5ec983b3fa39f1f3b03fb90aa3a13ee/Data/raster/lc2019_sml.tif") 
 ```
 
 ```{r Plot land cover for 2008 and 2019, fig.height=10, fig.width=8}
@@ -391,29 +391,33 @@ reclassMatrix <-
 reclassMatrix
 ```
 
-```{r land use change?}
+```{r developed land cover}
 #reclassify land cover change using reclass matrix
 lc_2008r <- 
   reclassify(lc_2008, reclassMatrix)
 
-lc_2008r[lc_2008r < 1] <- NA
+lc_2008r[lc_2008r < 1] <- 0
 
-names(lc_2008r) <- "lc_change08"
+names(lc_2008r) <- "dev08"
 
 lc_2019r <- reclassify(lc_2019, reclassMatrix)
 
-lc_2019r[lc_2019r < 1] <- NA
+lc_2019r[lc_2019r < 1] <- 0
 
-names(lc_2019r) <- "lc_change19"
+names(lc_2019r) <- "dev19"
 
 ggplot() +
   geom_sf(data=Atlanta_MSA) +
-  geom_raster(data=rast(lc_2008r) %>% na.omit, 
-              aes(x,y,fill=as.factor(value))) +
-  scale_fill_viridis(discrete=TRUE,
-                     option="C",
-                     name ="Land Cover\nChange") + 
-  labs(title="Development Land Use Change") + #IS THIS ACTUALLY A MAP OF DEVELOPMENT LAND USE CHANGE?
+  geom_raster(data=rast(lc_2019r) %>% na.omit, 
+              aes(x,y, fill=as.factor(value))) +
+    scale_colour_manual(values = c(gray, highlight),
+                        labels=c("False","True"),
+                        name = "") +
+  geom_sf(data=metro_counties,
+          color = "black",
+          fill = "transparent",
+          linewidth = .5) +
+  labs(title="Developed Areas (2019)", subtitle='Atlanta Metro Area') + #IS THIS ACTUALLY A MAP OF DEVELOPMENT LAND USE CHANGE?
   mapTheme
 ```
 
