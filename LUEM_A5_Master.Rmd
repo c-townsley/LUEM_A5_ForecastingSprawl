@@ -78,6 +78,7 @@ mapTheme <- theme(plot.title =element_text(size=12),
 gray <- "#D3D3D3"
 highlight <- "#0D0887FF"
 palette2 <- c("#FA9E3BFF", "#0D0887FF")
+palette3 <- c("#FDC926FF", "#D8576BFF", "#0D0887FF")
 palette4 <- c("#FA9E3BFF", "#D8576BFF", "#9C179EFF", "#0D0887FF")
 palette5 <- c("#FDC926FF", "#ED7953FF", "#D8576BFF", "#9C179EFF", "#0D0887FF")
 palette10 <- c("#F0F921FF", "#FDC926FF", "#FA9E3BFF", "#ED7953FF", "#D8576BFF",
@@ -418,14 +419,14 @@ ggplot() +
   geom_sf(data=Atlanta_MSA) +
   geom_raster(data=rast(development_change) %>% na.omit, 
               aes(x,y, fill=as.factor(value))) +
-    scale_colour_manual(values = c(gray, highlight),
-                        labels=c("No Change, Undeveloped","Change","No Change, Developed"),
-                        name = c("No Change, Undeveloped","Change","No Change, Developed")) +
+    #scale_colour_manual(values = palette3,
+    #                    labels = c("No Change, Undeveloped", "Developed since 2008", "No Change, Developed"),
+                 #       name = "") +
   geom_sf(data=metro_counties,
           color = "black",
           fill = "transparent",
           linewidth = .5) +
-  labs(title="Development Change 2008-2019", subtitle='Atlanta Metro Area')+
+  labs(title="Development Change 2008-2019", subtitle='Atlanta Metro Area; \n0 = No Change, Undeveloped, \n1 = Developed since 2008, \n2 = No Change, Developed')+
   mapTheme,
 
 
@@ -433,30 +434,12 @@ ggplot() +
   geom_sf(data=Atlanta_MSA) +
   geom_raster(data=rast(development_change) %>% na.omit, 
               aes(x,y, fill=as.factor(value==1))) +
-    scale_colour_manual(values = c(),
-                        labs(fill = "Development Change"),
-                        name = c("No Change, Undeveloped","Change","No Change, Developed")) +
   geom_sf(data=metro_counties,
           color = "black",
           fill = "transparent",
           linewidth = .5) +
-  labs(title="Development Change 2008-2019", subtitle='Atlanta Metro Area')+
+  labs(title="Development Change 2008-2019", subtitle='Atlanta Metro Area; \nTRUE = Developed since 2008')+
   mapTheme)
-
-
-ggplot() +
-  geom_sf(data=Atlanta_MSA) +
-  geom_raster(data=rast(development_change) %>% na.omit, 
-              aes(x,y, fill=as.factor(value==1))) +
-    scale_colour_manual(name = "Developed since 2008",
-                        values = c("blue", "white"),
-                        labels = "No Change", "Developed Since 2008") +
-  geom_sf(data=metro_counties,
-          color = "black",
-          fill = "transparent",
-          linewidth = .5) +
-  labs(title="Development Change 2008-2019", subtitle='Atlanta Metro Area')+
-  mapTheme
   
   
 ```
