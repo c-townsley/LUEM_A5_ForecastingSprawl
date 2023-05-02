@@ -75,6 +75,8 @@ mapTheme <- theme(plot.title =element_text(size=12),
                   legend.key.height = unit(1, "cm"), legend.key.width = unit(0.2, "cm"))
 
 #Colors: Viridis Plasma (option "C")
+gray <- "#D3D3D3"
+highlight <- "#0D0887FF"
 palette2 <- c("#0D0887FF","#FA9E3BFF")
 palette4 <- c("#0D0887FF","#9C179EFF","#D8576BFF","#FA9E3BFF")
 palette5 <- c("#0D0887FF","#9C179EFF","#D8576BFF","#ED7953FF","#FDC926FF")
@@ -230,7 +232,7 @@ ggplot()+
 
 ## Landcover
 
-### Land Cover by Year
+### Land Cover by Year and Type
 
 First, raster files of land cover for the Atlanta Metro area are imported from the NLCD.
 
@@ -270,7 +272,7 @@ lc_2008 <- raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/795
 lc_2019 <- raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/795eb6bf1286d55f5488473fb9a8f10dc7478fef/Data/raster/lc2019_sml.tif") 
 ```
 
-```{r Plot land cover for 2008 and 2019, fig.height=13, fig.width=6}
+```{r Plot land cover for 2008 and 2019, fig.height=10, fig.width=8}
 grid.arrange(ncol = 1,
 ggplot() +
   geom_raster(data=rast(lc_2008) %>% na.omit %>% filter(value > 0), 
@@ -278,7 +280,11 @@ ggplot() +
   scale_fill_viridis(discrete=TRUE,
                      name ="",
                      option = "C") +
-  geom_sf(data=Atlanta_MSA,
+  geom_sf(data=metro_counties,
+          color = "white",
+          fill = "transparent",
+          linewidth = .5) +
+    geom_sf(data=Atlanta_MSA,
           color = "black",
           fill = "transparent",
           linewidth = .75) +
@@ -293,7 +299,11 @@ ggplot() +
   scale_fill_viridis(discrete=TRUE,
                      name ="",
                      option = "C") +
-  geom_sf(data=Atlanta_MSA,
+  geom_sf(data=metro_counties,
+          color = "white",
+          fill = "transparent",
+          linewidth = .5) +
+      geom_sf(data=Atlanta_MSA,
           color = "black",
           fill = "transparent",
           linewidth = .75) +
@@ -303,7 +313,7 @@ ggplot() +
 )
 ```
 
-Viewing land cover at the MSA level in 2008 and 2019 shows that change is happening at too small a scale to discern visually alone. Hence, the powers of R.
+Viewing land cover at the MSA level in 2008 and 2019 shows that change is happening at too small a scale to discern visually alone. Hence, the powers of R. However, examining land cover on a county by county level shows XX.
 
 ### Land Cover by Type
 
@@ -344,7 +354,6 @@ theRasterList08 <- c(developed08, forest08, farm08, wetlands08, otherUndeveloped
 
 theRasterList19 <- c(developed19, forest19, farm19, wetlands19, otherUndeveloped19, water19)
 
-### This part has a dataframe issue
 aggregatedRasters19 <-
   aggregateRaster(theRasterList19, AtlantaMSA_fishnet) %>%
   dplyr::select(developed19, forest19, farm19, wetlands19, otherUndeveloped19, water19) %>%
@@ -359,8 +368,8 @@ aggregatedRasters19 %>%
     geom_sf(data=metro_counties) +
     geom_point(aes(X,Y, colour=as.factor(value))) +
     facet_wrap(~var) +
-    scale_colour_manual(values = palette2,
-                        labels=c("Other","Land Cover"),
+    scale_colour_manual(values = c(gray, highlight),
+                        labels=c("False","True"),
                         name = "") +
     labs(title = "Land Cover Types, 2019",
          subtitle = "As fishnet centroids") +
@@ -382,7 +391,7 @@ reclassMatrix <-
 reclassMatrix
 ```
 
-```{r land cover change}
+```{r land use change?}
 #reclassify land cover change using reclass matrix
 lc_2008r <- 
   reclassify(lc_2008, reclassMatrix)
@@ -408,7 +417,7 @@ ggplot() +
   mapTheme
 ```
 
-```{r converting fishnet to centroids}
+```{r land cover development change}
 changePoints <-
   rasterToPoints(lc_2008r) %>%
   as.data.frame() %>%
