@@ -77,11 +77,11 @@ mapTheme <- theme(plot.title =element_text(size=12),
 #Colors: Viridis Plasma (option "C")
 gray <- "#D3D3D3"
 highlight <- "#0D0887FF"
-palette2 <- c("#0D0887FF","#FA9E3BFF")
-palette4 <- c("#0D0887FF","#9C179EFF","#D8576BFF","#FA9E3BFF")
-palette5 <- c("#0D0887FF","#9C179EFF","#D8576BFF","#ED7953FF","#FDC926FF")
-palette10 <- c("#0D0887FF","#47039FFF","#7301A8FF","#9C179EFF","#BD3786FF",
-               "#D8576BFF","#ED7953FF","#FA9E3BFF","#FDC926FF","#F0F921FF")
+palette2 <- c("#FA9E3BFF", "#0D0887FF")
+palette4 <- c("#FA9E3BFF", "#D8576BFF", "#9C179EFF", "#0D0887FF")
+palette5 <- c("#FDC926FF", "#ED7953FF", "#D8576BFF", "#9C179EFF", "#0D0887FF")
+palette10 <- c("#F0F921FF", "#FDC926FF", "#FA9E3BFF", "#ED7953FF", "#D8576BFF",
+               "#BD3786FF", "#9C179EFF", "#7301A8FF", "#47039FFF", "#0D0887FF")
 ```
 
 
@@ -493,7 +493,7 @@ ggplot() +
   geom_sf(data = Pop19, aes(fill=factor(ntile(pop19,5))), colour=NA) +
   scale_fill_manual(values = palette5,
                     labels=quintileBreaks(Pop19,"pop19"),
-                   name="Quintile\nBreaks") +
+                    name="Quintile\nBreaks") +
   geom_sf(data = Atlanta_MSA, 
           color = "black", fill = "transparent", linewidth = .75) +
   labs(title="2019 Population\nAtlanta 21-County MSA") +
@@ -585,6 +585,10 @@ AtlantaHighways <-
 ggplot() +
   geom_sf(data = Atlanta_MSA, 
           color = "black", linewidth = .75) +
+  geom_point(data=fishnet, 
+             aes(x=xyC(AtlantaMSA_fishnet)[,1], y=xyC(AtlantaMSA_fishnet)[,2],colour=lc_change),size=1.5) +
+  scale_colour_manual(values = c(gray, highlight),
+                      labels=c("No Change","New Development")) +
   geom_sf(data=AtlantaHighways) +
   labs(title = "Highways") +
   mapTheme
