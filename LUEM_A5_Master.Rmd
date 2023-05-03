@@ -705,16 +705,193 @@ ggplot() +
 <br>
 
 # Data Exploration
+```{r plotting the averages (means) of infrastructure/development}
+
+dat %>%
+  dplyr::select(distance_highways,lagDevelopment,lc_change) %>% # development_change instead of lc_change?
+  gather(Variable, Value, -lc_change, -geometry) %>%
+  ggplot(., aes(lc_change, Value, fill=lc_change)) + # development_change instead of lc_change (x2)?
+    geom_bar(position = "dodge", stat = "summary", fun.y = "mean") +
+    facet_wrap(~Variable) +
+    scale_fill_manual(values = palette2,
+                      labels=c("No Change","New Development"),
+                      name="") +
+    labs(title="New Development as a Function of the Continuous Variables") +
+    plotTheme 
+
+```
+
+```{r bar plots of population variables}
+
+# development_change instead of lc_change?
+dat %>%
+  dplyr::select(pop_2000,pop_2010,pop_Change,lc_change) %>%
+  gather(Variable, Value, -lc_change, -geometry) %>%
+  ggplot(., aes(lc_change, Value, fill=lc_change)) + 
+    geom_bar(position = "dodge", stat = "summary", fun.y = "mean") +
+    facet_wrap(~Variable) +
+    scale_fill_manual(values = palette2,
+                      labels=c("No Change","New Development"),
+                      name="") +
+    labs(title="New Development as a Function of Factor Variables") +
+    plotTheme
+
+```
+
+```{r land cover conversion tables}
+# development_change instead of lc_change?
+dat %>%
+  dplyr::select(lc_change:otherUndeveloped,developed) %>%
+  gather(Land_Cover_Type, Value, -lc_change, -geometry) %>%
+   st_set_geometry(NULL) %>%
+     group_by(lc_change, Land_Cover_Type) %>%
+     summarize(n = sum(as.numeric(Value))) %>%
+     ungroup() %>%
+    mutate(Conversion_Rate = paste0(round(100 * n/sum(n), 2), "%")) %>%
+    filter(lc_change == 1) %>%
+  dplyr::select(Land_Cover_Type,Conversion_Rate) %>%
+  kable() %>% kable_styling(full_width = F)
+
+```
 
 ## ID areas of land use change period 1 -> period 2  
 
 <br>
 
-# Model Building: Binary Logistic Regression
+# Model Building: Binary Logistic Regression - Predicting for 2019
+
 
 Use period 1 data to create a model ("the model") to predict land use change
 
-# Model Testing and Validation
+# Model Building
+```{r training sets}
+set.seed(3456)
+trainIndex <- 
+  createDataPartition(dat$developed, p = .50,
+                                  list = FALSE,
+                                  times = 1)
+datTrain <- dat[ trainIndex,]
+datTest  <- dat[-trainIndex,]
+
+nrow(dat)
+
+```
+
+```{r linear models and plotting their R sqaured values}
+Model1 <- glm(lc_change ~ wetlands + forest  + farm + otherUndeveloped, 
+              family="binomial"(link="logit"), data = datTrain)
+
+Model2 <- glm(lc_change ~ wetlands + forest  + farm + otherUndeveloped + lagDevelopment, 
+              family="binomial"(link="logit"), data = datTrain)
+              
+Model3 <- glm(lc_change ~ wetlands + forest  + farm + otherUndeveloped + lagDevelopment + pop_2000, 
+              family="binomial"(link="logit"), data = datTrain)          
+              
+Model4 <- glm(lc_change ~ wetlands + forest  + farm + otherUndeveloped + lagDevelopment + pop_2000 + 
+              pop_2010, 
+              family="binomial"(link="logit"), data = datTrain)              
+            
+Model5 <- glm(lc_change ~ wetlands + forest  + farm + otherUndeveloped + lagDevelopment + pop_Change, 
+              family="binomial"(link="logit"), data = datTrain)              
+              
+Model6 <- glm(lc_change ~ wetlands + forest  + farm + otherUndeveloped + lagDevelopment + pop_Change + 
+              distance_highways, 
+              family="binomial"(link="logit"), data = datTrain) 
+
+
+modelList <- paste0("Model", 1:6)
+map_dfc(modelList, function(x)pR2(get(x)))[4,] %>%
+  setNames(paste0("Model",1:6)) %>%
+  gather(Model,McFadden) %>%
+  ggplot(aes(Model,McFadden)) +
+    geom_bar(stat="identity") +
+    labs(title= "McFadden R-Squared by Model") +
+    plotTheme
+
+```
+
+``` {r density plot of probabilities observed by class}
+testSetProbs <- 
+  data.frame(class = datTest$lc_change,
+             probs = predict(Model6, datTest, type="response")) 
+  
+ggplot(testSetProbs, aes(probs)) +
+  geom_density(aes(fill=class), alpha=0.5) +
+  scale_fill_manual(values = palette2,
+                    labels=c("No Change","New Development")) +
+  labs(title = "Histogram of test set predicted probabilities",
+       x="Predicted Probabilities",y="Density") +
+  plotTheme
+
+```
+
+# Accuracy
+```{r testing model sensitivity: true/false positives/negatives}
+options(yardstick.event_first = FALSE)
+
+testSetProbs <- 
+  testSetProbs %>% 
+  mutate(predClass_05 = as.factor(ifelse(testSetProbs$probs >= 0.05 ,1,0)),
+         predClass_17 = as.factor(ifelse(testSetProbs$probs >= 0.17 ,1,0))) 
+
+testSetProbs %>%
+  dplyr::select(-probs) %>%
+  gather(Variable, Value, -class) %>%
+  group_by(Variable) %>%
+  summarize(Sensitivity = round(yardstick::sens_vec(class,factor(Value)),2),
+            Specificity = round(yardstick::spec_vec(class,factor(Value)),2),
+            Accuracy = round(yardstick::accuracy_vec(class,factor(Value)),2)) %>% 
+  kable() %>%
+  kable_styling(full_width = F)
+
+```
+
+
+```{r development predictions}
+predsForMap <-         
+  dat %>%
+    mutate(probs = predict(Model6, dat, type="response") ,
+           Threshold_5_Pct = as.factor(ifelse(probs >= 0.05 ,1,0)),
+           Threshold_17_Pct =  as.factor(ifelse(probs >= 0.17 ,1,0))) %>%
+    dplyr::select(lc_change,Threshold_5_Pct,Threshold_17_Pct) %>%
+    gather(Variable,Value, -geometry) %>%
+    st_cast("POLYGON")
+
+ggplot() +
+  geom_point(data=predsForMap, aes(x=xyC(predsForMap)[,1], y=xyC(predsForMap)[,2], colour=Value)) +
+  facet_wrap(~Variable) +
+  scale_colour_manual(values = palette2, labels=c("No Change","New Development"),
+                      name="") +
+  labs(title="Development Predictions - Low Threshold") + 
+  mapTheme
+
+```
+
+```{r confusion metrics}
+#I think we are going to have to make the all the lc_change whatever it is for the relevant dataset for 2019
+
+ConfusionMatrix.metrics <-
+  dat %>%
+    mutate(probs = predict(Model6, dat, type="response") ,
+           Threshold_5_Pct = as.factor(ifelse(probs >= 0.05 ,1,0)),
+           Threshold_17_Pct =  as.factor(ifelse(probs >= 0.17 ,1,0))) %>%
+    mutate(TrueP_05 = ifelse(lc_change  == 1 & Threshold_5_Pct == 1, 1,0),
+           TrueN_05 = ifelse(lc_change  == 0 & Threshold_5_Pct == 0, 1,0),
+           TrueP_17 = ifelse(lc_change  == 1 & Threshold_17_Pct == 1, 1,0),
+           TrueN_17 = ifelse(lc_change  == 0 & Threshold_17_Pct == 0, 1,0)) %>%
+    dplyr::select(., starts_with("True")) %>%
+    gather(Variable, Value, -geometry) %>%
+    st_cast("POLYGON") 
+
+ggplot(data=ConfusionMatrix.metrics) +
+  geom_point(aes(x=xyC(ConfusionMatrix.metrics)[,1], 
+                 y=xyC(ConfusionMatrix.metrics)[,2], colour = as.factor(Value))) +
+  facet_wrap(~Variable) +
+  scale_colour_manual(values = palette2, labels=c("Correct","Incorrect"),
+                       name="") +
+  labs(title="Development Predictions - Low Threshold") + mapTheme
+
+```
 
 # Planning Scenarios (Projections)
 
