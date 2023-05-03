@@ -354,6 +354,11 @@ theRasterList08 <- c(developed08, forest08, farm08, wetlands08, otherUndeveloped
 
 theRasterList19 <- c(developed19, forest19, farm19, wetlands19, otherUndeveloped19, water19)
 
+aggregatedRasters08 <-
+  aggregateRaster(theRasterList08, AtlantaMSA_fishnet) %>%
+  dplyr::select(developed08, forest08, farm08, wetlands08, otherUndeveloped08, water08) %>%
+  mutate_if(is.numeric, as.factor)
+
 aggregatedRasters19 <-
   aggregateRaster(theRasterList19, AtlantaMSA_fishnet) %>%
   dplyr::select(developed19, forest19, farm19, wetlands19, otherUndeveloped19, water19) %>%
@@ -641,32 +646,47 @@ ggplot() +
 
 We measure accessibility by way of a spatial lag hypothesizing that new development is a function of distance to existing development. The shorter the distance, the more accessible a grid cell is to existing development. We measure this by calculating the average distance from each grid cell to its 2 nearest developed neighboring grid cells in 2009.
 
-```{r development spatial lag}
-thisFishnet$lagDevelopment <-
-    nn_function(xyC(thisFishnet),
-                xyC(filter(aggregatedRasters,developed==1)),
+```{r nn function}
+nn_function <- function(measureFrom,measureTo,k) {
+  #convert the sf layers to matrices
+  measureFrom_Matrix <-
+    as.matrix(measureFrom)
+  measureTo_Matrix <-
+    as.matrix(measureTo)
+  nn <-   
+    get.knnx(measureTo, measureFrom, k)$nn.dist
+    output <-
+    as.data.frame(nn) %>%
+    rownames_to_column(var = "thisPoint") %>%
+    gather(points, point_distance, V1:ncol(.)) %>%
+    arrange(as.numeric(thisPoint)) %>%
+    group_by(thisPoint) %>%
+    summarize(pointDistance = mean(point_distance)) %>%
+    arrange(as.numeric(thisPoint)) %>% 
+    dplyr::select(-thisPoint) %>%
+    pull()
+  
+  return(output)  
+}
+```
+
+
+```{r development spatial lag, fig.width=8}
+AtlantaMSA_fishnet$lagDevelopment08 <-
+    nn_function(xyC(AtlantaMSA_fishnet),
+                xyC(filter(aggregatedRasters08, developed08==1)),
                 2)
 
 ggplot() +
   geom_sf(data=metro_counties) +
-  geom_point(data=thisFishnet, 
-             aes(x=xyC(thisFishnet)[,1], y=xyC(thisFishnet)[,2], 
-                 colour=factor(ntile(lagDevelopment,5))), size=1.5) +
+  geom_point(data=AtlantaMSA_fishnet, 
+             aes(x=xyC(AtlantaMSA_fishnet)[,1], y=xyC(AtlantaMSA_fishnet)[,2], 
+                 colour=factor(ntile(lagDevelopment08,5))), size=1.5) +
   scale_colour_manual(values = palette5,
-                     labels=substr(quintileBreaks(thisFishnet,"lagDevelopment"),1,7),
+                     labels=substr(quintileBreaks(AtlantaMSA_fishnet,"lagDevelopment"),1,7),
                      name="Quintile\nBreaks") +
-  labs(title = "Spatial Lag to 2001 Development",
+  labs(title = "Spatial Lag to 2008 Development",
        subtitle = "As fishnet centroids") +
-  mapTheme
-
-ggplot() +
-  geom_sf(data=houstonMSA) +
-  geom_point(data=thisFishnet, 
-             aes(x=xyC(thisFishnet)$x, y=xyC(thisFishnet)$y, colour=lc_change)) +
-  scale_colour_manual(values = palette2,
-                      labels=c("No Change","New Development"),
-                      name = "") +
-  labs(title = "Land Cover Development Change", subtitle = "As fishnet centroids") +
   mapTheme
 ```
 
