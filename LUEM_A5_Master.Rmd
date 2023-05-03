@@ -381,6 +381,7 @@ aggregatedRasters19 %>%
          subtitle = "As fishnet centroids") +
    mapTheme
 ```
+
 Mapping land cover by type in 2019 shows that most development is happening at the outer fringes of the MSA, but there are a notable number of undeveloped areas near the center.
 
 ### Land Cover Change
@@ -690,8 +691,8 @@ ggplot() +
   geom_sf(data=metro_counties) +
   geom_point(data=AtlantaMSA_fishnet, 
              aes(x=xyC(AtlantaMSA_fishnet)[,1], y=xyC(AtlantaMSA_fishnet)[,2], 
-                 colour=factor(ntile(lagDevelopment08,3))), size=1.5) +
-  scale_colour_manual(values = palette3,
+                 colour=factor(ntile(lagDevelopment08,5))), size=1.5) +
+  scale_colour_manual(values = palette5,
                      labels=substr(quintileBreaks(AtlantaMSA_fishnet,"lagDevelopment"),1,7),
                      name="Quintile\nBreaks") +
   labs(title = "Spatial Lag to 2008 Development",
@@ -699,7 +700,20 @@ ggplot() +
   mapTheme
 ```
 
+# Create Final Dataset
 
+name it 'dat'.
+
+```{r combine all variables into one dataset}
+dat <-  
+  cbind(
+    AtlantaMSA_fishnet, dev_change_fishnet, highwayPoints_fishnet, fishnetPop, aggregatedRasters08) %>%
+  dplyr::select(development_change, developed08, forest08, farm08, wetlands08, otherUndeveloped08, water08,
+                pop09, pop19, pop_Change, distance_highways, lagDevelopment08) %>%
+  st_join(metro_counties) %>%
+  mutate(developed10 = ifelse(development_change  == 1 & developed08 == 1, 0, 1)) %>% #charlie to confirm if the else value should be 1 or 'developed'
+  filter(water08 == 0) 
+```
 
 
 <br>
