@@ -78,6 +78,7 @@ mapTheme <- theme(plot.title =element_text(size=12),
 gray <- "#D3D3D3"
 highlight <- "#0D0887FF"
 palette2 <- c("#FA9E3BFF", "#0D0887FF")
+palette3 <- c("#FDC926FF", "#D8576BFF", "#0D0887FF")
 palette4 <- c("#FA9E3BFF", "#D8576BFF", "#9C179EFF", "#0D0887FF")
 palette5 <- c("#FDC926FF", "#ED7953FF", "#D8576BFF", "#9C179EFF", "#0D0887FF")
 palette10 <- c("#F0F921FF", "#FDC926FF", "#FA9E3BFF", "#ED7953FF", "#D8576BFF",
