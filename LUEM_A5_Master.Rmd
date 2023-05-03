@@ -689,8 +689,8 @@ ggplot() +
   geom_sf(data=metro_counties) +
   geom_point(data=AtlantaMSA_fishnet, 
              aes(x=xyC(AtlantaMSA_fishnet)[,1], y=xyC(AtlantaMSA_fishnet)[,2], 
-                 colour=factor(ntile(lagDevelopment08,5))), size=1.5) +
-  scale_colour_manual(values = palette5,
+                 colour=factor(ntile(lagDevelopment08,3))), size=1.5) +
+  scale_colour_manual(values = palette3,
                      labels=substr(quintileBreaks(AtlantaMSA_fishnet,"lagDevelopment"),1,7),
                      name="Quintile\nBreaks") +
   labs(title = "Spatial Lag to 2008 Development",
