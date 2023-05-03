@@ -396,7 +396,7 @@ reclassMatrix <-
 reclassMatrix
 ```
 
-```{r developed land cover}
+```{r developed land cover change plot}
 #reclassify land cover change using reclass matrix
 ###LINDSEY
 
@@ -434,27 +434,35 @@ ggplot() +
 ```{r land cover development change}
 ### LINDSEY
 
+dev_change <- reclassify(development_change, reclassMatrix)
+                         
+dev_change[development_change < 1] <- NA
+
+names(dev_change) <- "development_change"
+
 
 changePoints <-
-  rasterToPoints(lc_2008r) %>%
+  rasterToPoints(dev_change) %>%
   as.data.frame() %>%
   st_as_sf(coords = c("x", "y"), crs = st_crs(AtlantaMSA_fishnet))
 
-fishnet <- 
+dev_change_fishnet <- 
   aggregate(changePoints, AtlantaMSA_fishnet, sum) %>%
-  mutate(lc_2008r = ifelse(is.na(lc_2008r),0,1))
-         ,
-         lc_2008r = as.factor(lc_2008r))
+  mutate(development_change = ifelse(is.na(development_change),0,1),
+         development_change = as.factor(development_change))
 
 ggplot() +
-  geom_sf(data = Atlanta_MSA) +
-  geom_point(data = AtlantaMSA_fishnet, 
-             aes(x=xyC(AtlantaMSA_fishnet)$x, y=xyC(AtlantaMSA_fishnet)$y, colour=lc_2008r)) +
+  geom_sf(data=Atlanta_MSA) +
+  geom_point(data=dev_change_fishnet, 
+             aes(x=xyC(dev_change_fishnet)$x, y=xyC(dev_change_fishnet)$y, colour=development_change)) +
   scale_colour_manual(values = palette2,
                       labels=c("No Change","New Development"),
                       name = "") +
-  labs(title = "Land Cover Development Change", subtitle = "As fishnet centroids") +
+  labs(title = "Land Cover Development Change", subtitle = "Atlanta metro area | Fishnet centroids") +
   mapTheme
+
+#dev_change_fishnet <- st_write(dev_change_fishnet, "C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Data/geojson/dev_change_fishnet.geojson")
+
 ```
 
 
