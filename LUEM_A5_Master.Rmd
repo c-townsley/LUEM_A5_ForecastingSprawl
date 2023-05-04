@@ -199,13 +199,13 @@ ggplot() +
 ```{r msa conversion, include=FALSE, eval=FALSE}
 ## SKIP ##
 #Convert shapefile to geojson so can store on github
-st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/Atlanta_Metro_Counties.geojson")
+#st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/Atlanta_Metro_Counties.geojson")
 
-st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/shapefile/Atlanta_Metro_Boundary/Atlanta_Metro_Counties.shp")
+#st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/shapefile/Atlanta_Metro_Boundary/Atlanta_Metro_Counties.shp")
 
-st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/AtlantaMSA_Boundary_21counties.geojson")
+#st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/AtlantaMSA_Boundary_21counties.geojson")
 
-st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/shapefile/Atlanta_Metro_Boundary_21county/AtlantaMSA_Boundary_21counties.shp")
+#st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/shapefile/Atlanta_Metro_Boundary_21county/AtlantaMSA_Boundary_21counties.shp")
 ```
 
 
@@ -400,7 +400,6 @@ reclassMatrix
 
 ```{r developed land cover change plot}
 #reclassify land cover change using reclass matrix
-###LINDSEY
 
 lc_2008r <- 
   reclassify(lc_2008, reclassMatrix)
@@ -434,8 +433,6 @@ ggplot() +
 ```
 
 ```{r land cover development change}
-### LINDSEY
-
 dev_change <- reclassify(development_change, reclassMatrix)
                          
 dev_change[development_change < 1] <- NA
@@ -526,6 +523,7 @@ ggplot() +
 Reconcile tract boundaries and fishnet grid cells
 
 ```{r reconcile tracts and fishnet cells}
+### Breaking here on select(fishnetID)
 AtlantaMSA_fishnet <-
   AtlantaMSA_fishnet %>%
   rownames_to_column("fishnetID") %>% 
@@ -591,9 +589,9 @@ Load in highway data.
 
 ```{r highway to geojson, include=FALSE, eval=FALSE}
 #Skip
-metro_highways <- st_read("C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/shapefile/AtlantaMetro_Major_Roads/Major_Roads.shp")
+#metro_highways <- st_read("C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/shapefile/AtlantaMetro_Major_Roads/Major_Roads.shp")
 
-st_write(metro_highways, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/Major_Roads.geojson")
+#st_write(metro_highways, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/Major_Roads.geojson")
 ```
 
 
@@ -646,7 +644,7 @@ ggplot() +
                       name="Quintile\nBreaks") +
   geom_sf(data=AtlantaHighways, colour = "black") +
   labs(title = "Distance to Highways",
-       subtitle = "As fishnet centroids; Highways visualized in red") +
+       subtitle = "As fishnet centroids; Highways visualized in black") +
   mapTheme
 ```
 
@@ -719,16 +717,193 @@ dat <-
 <br>
 
 # Data Exploration
+```{r plotting the averages (means) of infrastructure/development}
+
+dat %>%
+  dplyr::select(distance_highways,lagDevelopment08,development_change) %>% # development_change instead of lc_change?
+  gather(Variable, Value, -development_change, -geometry) %>%
+  ggplot(., aes(development_change, Value, fill=development_change)) + # development_change instead of lc_change (x2)?
+    geom_bar(position = "dodge", stat = "summary", fun.y = "mean") +
+    facet_wrap(~Variable) +
+    scale_fill_manual(values = palette2,
+                      labels=c("No Change","New Development"),
+                      name="") +
+    labs(title="New Development as a Function of the Continuous Variables") +
+    plotTheme 
+
+```
+
+```{r bar plots of population variables}
+
+# development_change instead of lc_change?
+dat %>%
+  dplyr::select(pop09,pop19,pop_Change,development_change) %>%
+  gather(Variable, Value, -development_change, -geometry) %>%
+  ggplot(., aes(development_change, Value, fill=development_change)) + 
+    geom_bar(position = "dodge", stat = "summary", fun.y = "mean") +
+    facet_wrap(~Variable) +
+    scale_fill_manual(values = palette2,
+                      labels=c("No Change","New Development"),
+                      name="") +
+    labs(title="New Development as a Function of Factor Variables") +
+    plotTheme
+
+```
+
+```{r land cover conversion tables}
+# From this conversion table, we see that forested areas in 2008 were the most likely to be developed in 2019, at 8.85% liklihood of development...
+## Although I am kind of confused as to why developed08 is the second largest. I think this is because this is based on the two adjacent cells, showing that development was 8.25% likely adjacent to two cells that were developed, second onlt to forested areas. If true, this shows that Atlanta has a preference for developing woodlands first, with areas adjacent to those that are already developed as a close second. 
+
+dat %>%
+  dplyr::select(development_change:otherUndeveloped08,developed08) %>%
+  gather(Land_Cover_Type, Value, -development_change, -geometry) %>%
+   st_set_geometry(NULL) %>%
+     group_by(development_change, Land_Cover_Type) %>%
+     summarize(n = sum(as.numeric(Value))) %>%
+     ungroup() %>%
+    mutate(Conversion_Rate = paste0(round(100 * n/sum(n), 2), "%")) %>%
+    filter(development_change == 1) %>%
+  dplyr::select(Land_Cover_Type,Conversion_Rate) %>%
+  kable() %>% kable_styling(full_width = F)
+
+```
 
 ## ID areas of land use change period 1 -> period 2  
 
 <br>
 
-# Model Building: Binary Logistic Regression
+# Model Building: Binary Logistic Regression - Predicting for 2019
+
 
 Use period 1 data to create a model ("the model") to predict land use change
 
-# Model Testing and Validation
+# Model Building
+```{r training sets}
+set.seed(3456)
+trainIndex <- 
+  createDataPartition(dat$developed08, p = .50,
+                                  list = FALSE,
+                                  times = 1)
+datTrain <- dat[ trainIndex,]
+datTest  <- dat[-trainIndex,]
+
+nrow(dat)
+
+```
+
+```{r linear models and plotting their R sqaured values and test set histogram plot}
+Model1 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08, 
+              family="binomial"(link="logit"), data = datTrain)
+
+Model2 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08, 
+              family="binomial"(link="logit"), data = datTrain)
+              
+Model3 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop09, 
+              family="binomial"(link="logit"), data = datTrain)          
+              
+Model4 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop09 + 
+              pop19, 
+              family="binomial"(link="logit"), data = datTrain)              
+            
+Model5 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop_Change,
+              family="binomial"(link="logit"), data = datTrain)              
+              
+Model6 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop_Change +               distance_highways, 
+              family="binomial"(link="logit"), data = datTrain) 
+
+
+modelList <- paste0("Model", 1:6)
+map_dfc(modelList, function(x)pR2(get(x)))[4,] %>%
+  setNames(paste0("Model",1:6)) %>%
+  gather(Model,McFadden) %>%
+  ggplot(aes(Model,McFadden)) +
+    geom_bar(stat="identity") +
+    labs(title= "McFadden R-Squared by Model") +
+    plotTheme
+
+```
+
+``` {r Density plot of probabilities observed by class}
+testSetProbs <- 
+  data.frame(class = datTest$development_change,
+             probs = predict(Model6, datTest, type="response")) 
+  
+ggplot(testSetProbs, aes(probs)) +
+  geom_density(aes(fill=class), alpha=0.5) +
+  scale_fill_manual(values = palette2,
+                    labels=c("No Change","New Development")) +
+  labs(title = "Histogram of test set predicted probabilities",
+       x="Predicted Probabilities",y="Density") +
+  plotTheme
+
+```
+
+# Accuracy
+```{r testing model sensitivity: true/false positives/negatives}
+options(yardstick.event_first = FALSE)
+
+testSetProbs <- 
+  testSetProbs %>% 
+  mutate(predClass_05 = as.factor(ifelse(testSetProbs$probs >= 0.05 ,1,0)),
+         predClass_17 = as.factor(ifelse(testSetProbs$probs >= 0.17 ,1,0))) 
+
+testSetProbs %>%
+  dplyr::select(-probs) %>%
+  gather(Variable, Value, -class) %>%
+  group_by(Variable) %>%
+  summarize(Sensitivity = round(yardstick::sens_vec(class,factor(Value)),2),
+            Specificity = round(yardstick::spec_vec(class,factor(Value)),2),
+            Accuracy = round(yardstick::accuracy_vec(class,factor(Value)),2)) %>% 
+  kable() %>%
+  kable_styling(full_width = F)
+
+```
+
+
+```{r development predictions based on thresholds}
+predsForMap <-         
+  dat %>%
+    mutate(probs = predict(Model6, dat, type="response") ,
+           Threshold_5_Pct = as.factor(ifelse(probs >= 0.05 ,1,0)),
+           Threshold_17_Pct =  as.factor(ifelse(probs >= 0.17 ,1,0))) %>%
+    dplyr::select(development_change,Threshold_5_Pct,Threshold_17_Pct) %>%
+    gather(Variable,Value, -geometry) %>%
+    st_cast("POLYGON")
+
+ggplot() +
+  geom_point(data=predsForMap, aes(x=xyC(predsForMap)[,1], y=xyC(predsForMap)[,2], colour=Value)) +
+  facet_wrap(~Variable) +
+  scale_colour_manual(values = palette2, labels=c("No Change","New Development"),
+                      name="") +
+  labs(title="Development Predictions - Low Threshold") + 
+  mapTheme
+
+```
+
+```{r development predictions based on confusion metrics}
+
+ConfusionMatrix.metrics <-
+  dat %>%
+    mutate(probs = predict(Model6, dat, type="response") ,
+           Threshold_5_Pct = as.factor(ifelse(probs >= 0.05 ,1,0)),
+           Threshold_17_Pct =  as.factor(ifelse(probs >= 0.17 ,1,0))) %>%
+    mutate(TrueP_05 = ifelse(development_change  == 1 & Threshold_5_Pct == 1, 1,0),
+           TrueN_05 = ifelse(development_change  == 0 & Threshold_5_Pct == 0, 1,0),
+           TrueP_17 = ifelse(development_change  == 1 & Threshold_17_Pct == 1, 1,0),
+           TrueN_17 = ifelse(development_change  == 0 & Threshold_17_Pct == 0, 1,0)) %>%
+    dplyr::select(., starts_with("True")) %>%
+    gather(Variable, Value, -geometry) %>%
+    st_cast("POLYGON") 
+
+ggplot(data=ConfusionMatrix.metrics) +
+  geom_point(aes(x=xyC(ConfusionMatrix.metrics)[,1], 
+                 y=xyC(ConfusionMatrix.metrics)[,2], colour = as.factor(Value))) +
+  facet_wrap(~Variable) +
+  scale_colour_manual(values = palette2, labels=c("Correct","Incorrect"),
+                       name="") +
+  labs(title="Development Predictions - Low Threshold") + mapTheme
+
+```
 
 # Planning Scenarios (Projections)
 
@@ -741,7 +916,103 @@ Use period 1 data to create a model ("the model") to predict land use change
 
 >After drawing the new development, come up with a scenario-based population projection for that area and create a development forecast for 2029.
 
+```{r import new roads files}
+#We created a new highway in eastern Atlanta where development between 2008 and 2019 has not previously concentrated. This was also a forested area, so the fact that much development had not happened there over the earlier period aroused our curiosity. This way, we can test the extend that a new road investment influences development in on most desirable area of land cover.
 
+#NEW HIGHWAY SEGMENT ONLY
+new_highway <- st_read(new_highway,"C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Data/geojson/new_highway.geojson") 
+
+new_highway <- new_highway %>% 
+st_transform(st_crs(metro_counties)) %>%
+  st_intersection(metro_counties) 
+
+new_highway <- st_read("C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Data/shapefile/AtlantaMetro_Major_Roads_ADDITION/Highways_addition.shp")
+
+#new_highway <- st_write(new_highway,"C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Data/geojson/new_highway.geojson")
+
+#ALL HIGHWAYS MERGED TOGETHER -- highways_all --  
+
+highways_all <- st_read("C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Data/shapefile/AtlantaMetro_Major_Roads_ADDITION/Highways_addition_Merge.shp")
+highways_all <- st_write(highways_addition,"C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Data/geojson/highways_all.geojson")
+
+
+highways_all <- st_read("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/d9859fc1069dd89d44fcaf345e722a9bf601a550/Data/geojson/highways_add.geojson") %>% 
+st_transform(st_crs(metro_counties)) %>%
+  st_intersection(metro_counties) %>% 
+
+highways_all <- highways_all %>% 
+st_transform(st_crs(metro_counties)) %>%
+  st_intersection(metro_counties) 
+
+
+```
+
+```{r mapping the new highway addition}
+## I was trying to get the Existing Highways and New Highway legend items to appear but gave up for now.
+ggplot() +
+  geom_sf(data=Atlanta_MSA) +
+  geom_point(data=dev_change_fishnet, 
+             aes(x=xyC(dev_change_fishnet)$x, y=xyC(dev_change_fishnet)$y, colour=development_change)) +
+  scale_color_manual(values = palette2,
+                      labels=c("No Change","New Development"),
+                      name = "") +
+  labs(title = "Land Cover Development Change", subtitle = "Atlanta metro area | Fishnet centroids with existing highways in black and a new highway in cyan") +
+   geom_sf(data=AtlantaHighways, colour = "black") +
+  geom_sf(data=new_highway, colour="cyan", linewidth=1)+
+    #scale_color_manual(values=c("Existing Highways" = "black","New Highway" = "cyan"))+
+  mapTheme
+
+  #                  labels=c("Existing Highways", "New Highway"))
+```
+
+```{r testing highway_add}
+#Skip#
+ggplot() +
+  geom_sf(data=Atlanta_MSA) +
+  geom_point(data=dev_change_fishnet, 
+             aes(x=xyC(dev_change_fishnet)$x, y=xyC(dev_change_fishnet)$y, colour=development_change)) +
+  scale_color_manual(values = palette2,
+                      labels=c("No Change","New Development"),
+                      name = "") +
+  labs(title = "Land Cover Development Change", subtitle = "Atlanta metro area | Fishnet centroids with existing highways in black and a new highway in cyan") +
+  geom_sf(data=highways_all, colour="black", linewidth=.5)+
+  mapTheme
+```
+
+```{r create highway distance raster with new highway segment }
+
+new_highway_raster <- 
+  as(highways_add,'Spatial') %>%
+  rasterize(.,emptyRaster)
+
+new_highway_raster_distance <- distance(new_highway_raster)
+names(new_highway_raster_distance) <- "distance_highways"
+
+new_highwayPoints <-
+  rasterToPoints(new_highway_raster_distance) %>%
+  as.data.frame() %>%
+  st_as_sf(coords = c("x", "y"), crs = st_crs(AtlantaMSA_fishnet))
+
+new_highwayPoints_fishnet <- 
+  aggregate(new_highwayPoints, AtlantaMSA_fishnet, mean) %>%
+  mutate(distance_highways = ifelse(is.na(distance_highways),0,distance_highways))
+
+ggplot() +
+  geom_sf(data=metro_counties) +
+  geom_point(data=new_highwayPoints_fishnet, aes(x=xyC(new_highwayPoints_fishnet)[,1], 
+                                             y=xyC(new_highwayPoints_fishnet)[,2], 
+                 colour=factor(ntile(distance_highways,5))),size=1.5) +
+  scale_colour_manual(values = palette5,
+                      labels=substr(quintileBreaks(new_highwayPoints_fishnet,"distance_highways"),1,8),
+                      name="Quintile\nBreaks") +
+  geom_sf(data=highways_add, colour = "black") +
+  labs(title = "Distance to Highways",
+       subtitle = "As fishnet centroids; Highways visualized in black") +
+  mapTheme
+
+
+
+```
 ## Scenario 2: Demand-side Change Forecast
 
 >From Assignment:
