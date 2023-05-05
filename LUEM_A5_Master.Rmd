@@ -85,6 +85,11 @@ palette10 <- c("#F0F921FF", "#FDC926FF", "#FA9E3BFF", "#ED7953FF", "#D8576BFF",
                "#BD3786FF", "#9C179EFF", "#7301A8FF", "#47039FFF", "#0D0887FF")
 ```
 
+```{r directories, include=FALSE}
+dir_git <- "https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo"
+
+dir_ct <- 'C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data'
+```
 
 
 ```{r functions}
@@ -263,7 +268,7 @@ lc_2008_crop <- mask(x = lc_2008_crop, mask = metro_counties)
 lc_2019_crop <- mask(x = lc_2019_crop, mask = metro_counties)
 
 #Export downsized rasters
-#writeRaster(lc_2008_crop, filename=file.path("C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/raster", "lc2008_sml.tif"), format="GTiff", overwrite=TRUE)
+#writeRaster(lc_2008_crop, filename=file.path(rast_dir, "lc2008_sml.tif"), format="GTiff", overwrite=TRUE)
 
 #writeRaster(lc_2019_crop, filename=file.path("C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/raster", "lc2019_sml.tif"), format="GTiff", overwrite=TRUE)
 ```
@@ -653,9 +658,13 @@ ggplot() +
   labs(title = "Highways and New Development") +
   mapTheme
 ```
+
+
 Calculate how far each fishnet cell is from a highway.
 Convert highway layer to raster then convert raster to points then mean distance from highway points is calculated by grid cell.
-```{r dist from highways}
+
+```{r convert highways to raster, eval=FALSE}
+##SKIP##
 emptyRaster <- development_change
 emptyRaster[] <- NA
 
@@ -663,6 +672,17 @@ emptyRaster[] <- NA
 highway_raster <- 
   as(AtlantaHighways,'Spatial') %>%
   rasterize(.,emptyRaster)
+
+#Export rasters
+rast_dir = paste(dir_ct, 'raster', sep='/')
+
+writeRaster(highway_raster, filename=file.path(rast_dir, "highway_raster.tif"), format="GTiff", overwrite=TRUE)
+```
+
+
+```{r dist from highways}
+#import highway raster
+highway_raster <- raster(paste(dir_git, "a5a5b0c9099b97f68c0d1aeadcdfe9dbd2960a9a/Data/raster/highway_raster.tif", sep='/'))
 
 highway_raster_distance <- distance(highway_raster)
 names(highway_raster_distance) <- "distance_highways"
@@ -686,7 +706,7 @@ ggplot() +
                       name="Quintile\nBreaks") +
   geom_sf(data=AtlantaHighways, colour = "black") +
   labs(title = "Distance to Highways",
-       subtitle = "As fishnet centroids; Highways visualized in black") +
+       subtitle = "In Feet; Highways visualized in black") +
   mapTheme
 ```
 
@@ -792,7 +812,7 @@ dat %>%
 
 ```
 
-```{r land cover conversion tables}
+```{r land cover conversion tables, fig.width=10}
 # From this conversion table, we see that forested areas in 2008 were the most likely to be developed in 2019, at 8.85% liklihood of development...
 ## Although I am kind of confused as to why developed08 is the second largest. I think this is because this is based on the two adjacent cells, showing that development was 8.25% likely adjacent to two cells that were developed, second onlt to forested areas. If true, this shows that Atlanta has a preference for developing woodlands first, with areas adjacent to those that are already developed as a close second. 
 
@@ -806,8 +826,9 @@ dat %>%
     mutate(Conversion_Rate = paste0(round(100 * n/sum(n), 2), "%")) %>%
     filter(development_change == 1) %>%
   dplyr::select(Land_Cover_Type,Conversion_Rate) %>%
-  kable() %>% kable_styling(full_width = F)
+  knitr::kable() %>% kable_styling(full_width = T)
 
+#table showing up blank for charlie :/
 ```
 
 ## ID areas of land use change period 1 -> period 2  
@@ -896,13 +917,15 @@ testSetProbs %>%
   summarize(Sensitivity = round(yardstick::sens_vec(class,factor(Value)),2),
             Specificity = round(yardstick::spec_vec(class,factor(Value)),2),
             Accuracy = round(yardstick::accuracy_vec(class,factor(Value)),2)) %>% 
-  kable() %>%
-  kable_styling(full_width = F)
+  reactable()
+
+    kableExtra::kable() %>%
+  kableExtra::kable_styling(full_width = F)
 
 ```
 
 
-```{r development predictions based on thresholds}
+```{r development predictions based on thresholds, fig.width=12}
 predsForMap <-         
   dat %>%
     mutate(probs = predict(Model6, dat, type="response") ,
@@ -918,11 +941,13 @@ ggplot() +
   scale_colour_manual(values = palette2, labels=c("No Change","New Development"),
                       name="") +
   labs(title="Development Predictions - Low Threshold") + 
-  mapTheme
+  mapTheme +
+  theme(legend.position = "bottom")
 
 ```
 
-```{r development predictions based on confusion metrics}
+
+```{r development predictions based on confusion metrics, fig.width=10, fig.height=10}
 
 ConfusionMatrix.metrics <-
   dat %>%
@@ -941,9 +966,11 @@ ggplot(data=ConfusionMatrix.metrics) +
   geom_point(aes(x=xyC(ConfusionMatrix.metrics)[,1], 
                  y=xyC(ConfusionMatrix.metrics)[,2], colour = as.factor(Value))) +
   facet_wrap(~Variable) +
-  scale_colour_manual(values = palette2, labels=c("Correct","Incorrect"),
+  scale_colour_manual(values = c(highlight, gray), labels=c("Correct","Incorrect"),
                        name="") +
-  labs(title="Development Predictions - Low Threshold") + mapTheme
+  labs(title="Development Predictions - Low Threshold") +
+  mapTheme +
+  theme(legend.position = "bottom")
 
 ```
 
@@ -962,49 +989,51 @@ ggplot(data=ConfusionMatrix.metrics) +
 #We created a new highway in eastern Atlanta where development between 2008 and 2019 has not previously concentrated. This was also a forested area, so the fact that much development had not happened there over the earlier period aroused our curiosity. This way, we can test the extend that a new road investment influences development in on most desirable area of land cover.
 
 #NEW HIGHWAY SEGMENT ONLY
-new_highway <- st_read(new_highway,"C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Data/geojson/new_highway.geojson") 
+new_highway <- st_read("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/a5a5b0c9099b97f68c0d1aeadcdfe9dbd2960a9a/Data/geojson/new_highway.geojson")
 
 new_highway <- new_highway %>% 
 st_transform(st_crs(metro_counties)) %>%
   st_intersection(metro_counties) 
 
+#which new highway do we use?
 new_highway <- st_read("C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Data/shapefile/AtlantaMetro_Major_Roads_ADDITION/Highways_addition.shp")
 
 #new_highway <- st_write(new_highway,"C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Data/geojson/new_highway.geojson")
 
 #ALL HIGHWAYS MERGED TOGETHER -- highways_all --  
 
-highways_all <- st_read("C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Data/shapefile/AtlantaMetro_Major_Roads_ADDITION/Highways_addition_Merge.shp")
-highways_all <- st_write(highways_addition,"C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Data/geojson/highways_all.geojson")
+highways_all <- st_read("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/a5a5b0c9099b97f68c0d1aeadcdfe9dbd2960a9a/Data/geojson/highways_all.geojson")
+#highways_all <- st_write(highways_addition,"C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Data/geojson/highways_all.geojson")
 
-
-highways_all <- st_read("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/d9859fc1069dd89d44fcaf345e722a9bf601a550/Data/geojson/highways_add.geojson") %>% 
+#is this supposed to be highways add?
+highways_all <- st_read("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/a5a5b0c9099b97f68c0d1aeadcdfe9dbd2960a9a/Data/geojson/highways_add.geojson") %>% 
 st_transform(st_crs(metro_counties)) %>%
-  st_intersection(metro_counties) %>% 
+  st_intersection(metro_counties)
 
 highways_all <- highways_all %>% 
 st_transform(st_crs(metro_counties)) %>%
   st_intersection(metro_counties) 
-
-
 ```
 
-```{r mapping the new highway addition}
+
+```{r mapping the new highway addition, fig.width=8}
 ## I was trying to get the Existing Highways and New Highway legend items to appear but gave up for now.
 ggplot() +
-  geom_sf(data=Atlanta_MSA) +
   geom_point(data=dev_change_fishnet, 
              aes(x=xyC(dev_change_fishnet)$x, y=xyC(dev_change_fishnet)$y, colour=development_change)) +
-  scale_color_manual(values = palette2,
+  scale_colour_manual(values = c(gray, "#ED7953FF"),
                       labels=c("No Change","New Development"),
                       name = "") +
-  labs(title = "Land Cover Development Change", subtitle = "Atlanta metro area | Fishnet centroids with existing highways in black and a new highway in cyan") +
-   geom_sf(data=AtlantaHighways, colour = "black") +
-  geom_sf(data=new_highway, colour="cyan", linewidth=1)+
+  labs(title = "Land Cover Development Change", subtitle = "Atlanta metro area | Fishnet centroids with existing highways\nin dark blue and a new highway in cyan") +
+  geom_sf(data=AtlantaHighways, color = highlight, linewidth = .5) +
+  geom_sf(data = Atlanta_MSA, fill = "transparent",
+          color = "black", linewidth = .75) +
+  geom_sf(data=new_highway, colour="cyan", linewidth=1) +
     #scale_color_manual(values=c("Existing Highways" = "black","New Highway" = "cyan"))+
   mapTheme
 
   #                  labels=c("Existing Highways", "New Highway"))
+
 ```
 
 ```{r testing highway_add}
@@ -1060,6 +1089,8 @@ ggplot() +
 >From Assignment:
 >Demand-side change: In this scenario, you will find or approximate 2029 population projections for your study area and then ‘distribute’ the ‘new’ population among all the census tracts in the region according to a logic or plan that you devise[4].
 You will use your population forecast and 2019 data to predict where new development will occur in 2029. Metropolitan planning organizations (MPOs) publish population forecasts for metro areas. If you can’t find one for your area, make some reasonable projection of your own and note that you have done so.
+
+
 
 
 
