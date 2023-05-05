@@ -771,7 +771,7 @@ dat <-
   dplyr::select(development_change, developed08, forest08, farm08, wetlands08, otherUndeveloped08, water08,
                 pop09, pop19, pop_Change, distance_highways, lagDevelopment08) %>%
   st_join(metro_counties) %>%
-  mutate(developed10 = ifelse(development_change  == 1 & developed08 == 1, 0, 1)) %>% #charlie to confirm if the else value should be 1 or 'developed'
+  mutate(developed19 = ifelse(development_change  == 1 & developed08 == 1, 0, 1)) %>% #charlie to confirm if the else value should be 1 or 'developed'
   filter(water08 == 0) 
 ```
 
@@ -919,8 +919,8 @@ testSetProbs %>%
             Accuracy = round(yardstick::accuracy_vec(class,factor(Value)),2)) %>% 
   reactable()
 
-    kableExtra::kable() %>%
-  kableExtra::kable_styling(full_width = F)
+    #kableExtra::kable() %>%
+  #kableExtra::kable_styling(full_width = F) #not working for charlie
 
 ```
 
@@ -1087,12 +1087,100 @@ ggplot() +
 ## Scenario 2: Demand-side Change Forecast
 
 >From Assignment:
->Demand-side change: In this scenario, you will find or approximate 2029 population projections for your study area and then ‘distribute’ the ‘new’ population among all the census tracts in the region according to a logic or plan that you devise[4].
+>Demand-side change: In this scenario, you will find or approximate 2029 population projections for your study area and then ‘distribute’ the ‘new’ population among all the census tracts in the region according to a logic or plan that you devise.
 You will use your population forecast and 2019 data to predict where new development will occur in 2029. Metropolitan planning organizations (MPOs) publish population forecasts for metro areas. If you can’t find one for your area, make some reasonable projection of your own and note that you have done so.
 
+Does the 2009 - 2019 period of development in Atlanta generalize to the 2019 - 2029 period? 
+
+Replace the lag development 2008 column with the distance from development in 2019.
+```{r lag dev 2019}
+dat <-
+  dat %>%
+  mutate(lagDevelopment08 = nn_function(xyC(.), xyC(filter(., developed19 == 1)),2))
+```
+
+Next, we look at projected population by county in 2029 based on population estimates from the [Georgia Data Analytics Center](https://gdac.georgia.gov/census) which is housed within the Governor's Office of Planning and Budget.
+
+```{r projected pop 2029}
+#County projections 2029
+#Barrow 96977 -
+#Bartow 119594 - 
+#Carroll 131577 -
+#Cherokee  301752-
+#Clayton  321410-
+#Cobb  830671-
+#Coweta  172341 -
+#Dawson    	32572-
+#DeKalb  822154-
+#Douglas  160635-
+#Fayette  128627-
+#Forsyth   316165-
+#Fulton  1198334-
+#Gwinnett   1044026-
+#Hall   	232720-
+#Henry   278739-
+#Newton 130559-
+#Paulding 208196-
+#Rockdale 	95574-
+#Spalding   70974-
+#Walton 	109205-
+
+countyPopulation_2029 <- 
+  data.frame(
+   NAME = Counties,
+   county_projection_2029 = 
+     c(96977,119594,131577,301752,321410,830671,172341,32572,822154,160635,128627,
+       316165,1198334,1044026,232720,278739,130559,208196,95574,70974,109205)) %>%
+   left_join(
+     dat %>%
+       st_set_geometry(NULL) %>%
+       group_by(NAME) %>%
+       summarize(county_population_2019 = round(sum(pop19))))
+
+countyPopulation_2029 %>%
+  gather(Variable,Value, -NAME) %>%
+  ggplot(aes(reorder(NAME,-Value),Value)) +
+  geom_bar(aes(fill=Variable), stat = "identity", position = "dodge") +
+  scale_fill_manual(values = palette2,
+                    labels=c("2019","2020"),
+                    name="Population") +
+  labs(title="Population Change by County: 2019 - 2029",
+       x="County", y="Population") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  plotTheme
+```
+
+### Predicting Development Demand (based on projected pop)
+
+Distribute projected population across the study area by weighting it according to a grid cell's 2019 population and then subtracting 2019 pop to get `pop_change`. Then, use Model XX to predict development for 2029 based on the projected population change and lag development features.
+
+```{r predicted development demand 2029}
+dat_infill <-
+  dat %>%
+  #calculate population change
+    left_join(countyPopulation_2029) %>%
+    mutate(proportion_of_county_pop = pop19 / county_population_2019,
+           pop_2029.infill = proportion_of_county_pop * county_projection_2029,
+           pop_Change = round(pop_2029.infill - pop19),2) %>%
+    dplyr::select(-county_projection_2029, -county_population_2019, 
+                  -proportion_of_county_pop, -pop_2029.infill) %>%
+  #predict for 2029
+    mutate(predict_2029.infill = predict(Model6,. , type="response"))
+
+dat_infill %>%
+  ggplot() +  
+  geom_point(aes(x=xyC(dat_infill)[,1], y=xyC(dat_infill)[,2], colour = factor(ntile(predict_2029.infill,5)))) +
+  scale_colour_manual(values = palette5,
+                    labels=substr(quintileBreaks(dat_infill,"predict_2029.infill"),1,4),
+                    name="Quintile\nBreaks") +
+  geom_sf(data=metro_counties, fill=NA, colour="white", size=.75) +
+  labs(title= "Development Demand in 2029: Predicted Probabilities") +
+  mapTheme
+```
 
 
 
+# Conclusion
 
 
 
