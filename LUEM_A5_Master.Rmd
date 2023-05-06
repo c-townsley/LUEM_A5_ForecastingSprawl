@@ -1293,9 +1293,20 @@ county_specific_metrics %>%
     labs(title= "County Specific Allocation Metrics", subtitle= "As rates", x="Indicator", y="Rate") +
     plotTheme + theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position="bottom")
 ```
+Explain the variables above.
+
 Looking at the development suitability indicators across the 21 counties of Georgia's MSA, we see that all counties have a large percentage of forested land and therefore of sensitive regions. Looking at the rest of the indicators together however, we can see that some counties are better suited for development than others.
 
 For example, we see that Hall county has both a high rate of development demand and of population change. It also has a relatively large amount of farmland and a relatively low amount of total wetlands and senstive land lost. Together, these factors suggest that Hall County has ample space for development that will not impact sensitive areas (other than forest).
+
+The satellite image below of development in Hall County shows why there is a large amount of forested land cover across the Atlanta metro region. There seems to be a regional preference for dispersed development in forested land.
+
+![](paste(dir_ct, 'Images/Satellite_HallCounty.png', sep='/'))
+
+
+Fulton not suitable, clayton really not suitable, same with Dekalb.
+
+
 
 # Conclusion
 
