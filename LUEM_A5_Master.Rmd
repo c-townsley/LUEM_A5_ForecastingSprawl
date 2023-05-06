@@ -84,6 +84,8 @@ palette4 <- c("#FA9E3BFF", "#D8576BFF", "#9C179EFF", "#0D0887FF")
 palette5 <- c("#FDC926FF", "#ED7953FF", "#D8576BFF", "#9C179EFF", "#0D0887FF")
 palette10 <- c("#F0F921FF", "#FDC926FF", "#FA9E3BFF", "#ED7953FF", "#D8576BFF",
                "#BD3786FF", "#9C179EFF", "#7301A8FF", "#47039FFF", "#0D0887FF")
+
+#R Markdown Cheat sheet for reference - https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf
 ```
 
 ```{r directories, include=FALSE}
@@ -372,7 +374,7 @@ aggregatedRasters19 <-
   dplyr::select(developed19, forest19, farm19, wetlands19, otherUndeveloped19, water19) %>%
   mutate_if(is.numeric, as.factor)
 
-aggregatedRasters19 %>%
+rasters19_map <- aggregatedRasters19 %>%
   gather(var,value,developed19:water19) %>%
   st_cast("POLYGON") %>%    #just to make sure no weird geometries slipped in
   mutate(X = xyC(.)$x,
@@ -397,6 +399,8 @@ aggregatedRasters19 %>%
    mapTheme +
    theme()  +
    theme(legend.position = "none")
+
+rasters19_map
 ```
 
 Mapping land cover by type in 2019 shows that most development is happening at the outer fringes of the MSA, but there are a notable number of undeveloped areas near the center.
@@ -1169,10 +1173,129 @@ dat_infill %>%
 
 Now that we have an idea of where development demand is most likely to occur in 2029, we compare predicted demand against environmentally sensitive land uses to figure out which land uses we recommend be allocated for development and which be reserved for conservation.
 
+Let's revisit how each kind of land cover was distributed in 2019.
+
+```{r aggregate 2019 rasters, fig.width=10}
+dat2 <-
+  aggregateRaster(theRasterList19, dat) %>%
+  dplyr::select(developed19, forest19, farm19, wetlands19, otherUndeveloped19, water19) %>%
+  st_set_geometry(NULL) %>%
+  bind_cols(.,dat) %>%
+  st_sf() %>%
+  st_cast("POLYGON")
+
+rasters19_map
+```
+
+
 ## Sensitive Land Cover Lost
 
-We create an indicator of sensitive 
+We create an indicator layer to show grid cells where forest or wetlands were lost to development between 20098 and 2019.
 
+```{r sensitive landcover loss, fig.width=8}
+dat2 <-
+  dat2 %>%
+   mutate(sensitive_lost19 = ifelse(forest08 == 1 & forest19 == 0 |
+                                    wetlands08 == 1 & wetlands19 == 0,1,0)) %>% 
+  st_transform("ESRI:102267")
+                      
+ggplot() +
+  geom_point(data=dat2, aes(x=xyC(dat2)[,1], y=xyC(dat2)[,2], colour=as.factor(sensitive_lost19))) +
+  scale_colour_manual(values = c(gray, highlight),
+                      labels=c("No Change","Sensitive Lost"),
+                      name = "") +
+  labs(title = "Sensitive lands lost: 2009 - 2019",
+       subtitle = "As fishnet centroids") +
+  mapTheme
+```
+
+## Landscape Fragmentation
+
+We then group areas where the `wetlands19` and `forest11` rasters are contiguous to create a `sensitive_regions` layer containing all sensitive regions with an area greater than 1 acre.
+
+```{r sensitive regions}
+sensitiveRegions <- 
+  raster::clump(wetlands19 + forest19) %>% #units are meters
+  rasterToPolygons() %>%
+  st_as_sf() %>%
+  group_by(clumps) %>% 
+  summarize() %>%
+    mutate(Acres = as.numeric(st_area(.) * 0.0000229568)) %>% #do we need to change this conversion factor? There are 0.00024711 acres per square meter and 4046.86 square meters in an acre
+    filter(Acres > 3954)  %>%
+  dplyr::select() %>%
+  raster::rasterize(.,emptyRaster) 
+sensitiveRegions[sensitiveRegions > 0] <- 1  
+names(sensitiveRegions) <- "sensitiveRegions"
+
+dat2 <-
+  aggregateRaster(c(sensitiveRegions), dat2) %>%
+  dplyr::select(sensitiveRegions) %>%
+  st_set_geometry(NULL) %>%
+  bind_cols(.,dat2) %>%
+  st_sf()
+
+ggplot() +
+  geom_point(data=dat2, aes(x=xyC(dat2)[,1], y=xyC(dat2)[,2], colour=as.factor(sensitiveRegions))) +
+  scale_colour_manual(values = c(gray, highlight),
+                      labels=c("Other","Sensitive Regions"),
+                      name="") +
+  labs(title = "Sensitive regions",
+       subtitle = "Continous areas of either wetlands or forests\ngreater than 1 acre") +
+  mapTheme
+```
+
+## Summarize by County
+
+Next we summarize a series of supply and demand metrics by county. We use this to better understand each county's suitability for development.
+
+```{r county specific metrics}
+county_specific_metrics <- 
+  dat2 %>%
+  #predict development demand from our model
+  mutate(Development_Demand = predict(Model6, dat2, type="response")) %>%
+  #get a count count of grid cells by county which we can use to calculate rates below
+  left_join(st_set_geometry(dat, NULL) %>% group_by(NAME) %>% summarize(count = n())) %>%
+  #calculate summary statistics by county
+  group_by(NAME) %>%
+  summarize(Total_Farmland = sum(farm19) / max(count),
+            Total_Forest = sum(forest19) / max(count),
+            Total_Wetlands = sum(wetlands19) / max(count),
+            Total_Undeveloped = sum(otherUndeveloped19) / max(count),
+            Sensitive_Land_Lost = sum(sensitive_lost19) / max(count),
+            Sensitive_Regions = sum(sensitiveRegions) / max(count),
+            Mean_Development_Demand = mean(Development_Demand)) %>%
+  #get population data by county
+  left_join(countyPopulation_2029 %>% 
+            mutate(Population_Change = county_projection_2029 - county_population_2019,
+                   Population_Change_Rate = Population_Change / county_projection_2029) %>%
+            dplyr::select(NAME,Population_Change_Rate))
+```
+
+
+```{r plot county specific metrics, fig.width=12, fig.height=10}
+county_specific_metrics %>%
+  gather(Variable, Value, -NAME, -geometry) %>%
+  mutate(Variable = factor(Variable, levels=c("Population_Change_Rate","Mean_Development_Demand",
+                                              "Total_Farmland","Total_Undeveloped","Total_Forest",
+                                              "Total_Wetlands","Sensitive_Land_Lost","Sensitive_Regions",
+                                              ordered = TRUE))) %>%
+  mutate(Planning_Designation = case_when(
+    Variable == "Population_Change_Rate" | Variable == "Mean_Development_Demand" ~ "Demand-Side",
+    Variable == "Total_Farmland" | Variable == "Total_Undeveloped"               ~ "Suitable",
+    TRUE                                                                         ~ "Not Suitable")) %>%
+  ggplot(aes(x=Variable, y=Value, fill=Planning_Designation)) +
+    geom_bar(stat="identity", position=position_dodge(), colour="black") +
+    facet_wrap(~NAME, ncol=5) +
+    coord_flip() +
+    scale_y_continuous(breaks = seq(.25, 1, by = .25)) +
+    geom_vline(xintercept = 2.5) + geom_vline(xintercept = 4.5) +
+    scale_fill_manual(values=c("#0D0887FF","#BD3786FF","#FDC926FF")) +
+    labs(title= "County Specific Allocation Metrics", subtitle= "As rates", x="Indicator", y="Rate") +
+    plotTheme + theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position="bottom")
+```
+Looking at the development suitability indicators across the 21 counties of Georgia's MSA, we see that all counties have a large percentage of forested land and therefore of sensitive regions. Looking at the rest of the indicators together however, we can see that some counties are better suited for development than others.
+
+For example, we see that Hall county has both a high rate of development demand and of population change. It also has a relatively large amount of farmland and a relatively low amount of total wetlands and senstive land lost. Together, these factors suggest that Hall County has ample space for development that will not impact sensitive areas (other than forest).
 
 # Conclusion
 
