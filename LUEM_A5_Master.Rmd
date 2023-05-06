@@ -40,6 +40,7 @@ library(gridExtra)
 library(viridis)
 library(igraph)
 library(maptools)
+library(reactable)
 
 plotTheme <- theme(
   plot.title =element_text(size=12),
@@ -663,7 +664,7 @@ ggplot() +
 Calculate how far each fishnet cell is from a highway.
 Convert highway layer to raster then convert raster to points then mean distance from highway points is calculated by grid cell.
 
-```{r convert highways to raster, eval=FALSE}
+```{r convert highways to raster}
 ##SKIP##
 emptyRaster <- development_change
 emptyRaster[] <- NA
@@ -674,9 +675,10 @@ highway_raster <-
   rasterize(.,emptyRaster)
 
 #Export rasters
+
 rast_dir = paste(dir_ct, 'raster', sep='/')
 
-writeRaster(highway_raster, filename=file.path(rast_dir, "highway_raster.tif"), format="GTiff", overwrite=TRUE)
+#writeRaster(highway_raster, filename=file.path(rast_dir, "highway_raster.tif"), format="GTiff", overwrite=TRUE)
 ```
 
 
@@ -758,6 +760,8 @@ ggplot() +
   labs(title = "Spatial Lag to 2008 Development",
        subtitle = "As fishnet centroids") +
   mapTheme
+
+#try natural breaks (manual)
 ```
 
 # Create Final Dataset
@@ -826,9 +830,7 @@ dat %>%
     mutate(Conversion_Rate = paste0(round(100 * n/sum(n), 2), "%")) %>%
     filter(development_change == 1) %>%
   dplyr::select(Land_Cover_Type,Conversion_Rate) %>%
-  knitr::kable() %>% kable_styling(full_width = T)
-
-#table showing up blank for charlie :/
+  reactable()
 ```
 
 ## ID areas of land use change period 1 -> period 2  
@@ -919,9 +921,6 @@ testSetProbs %>%
             Accuracy = round(yardstick::accuracy_vec(class,factor(Value)),2)) %>% 
   reactable()
 
-    #kableExtra::kable() %>%
-  #kableExtra::kable_styling(full_width = F) #not working for charlie
-
 ```
 
 
@@ -995,24 +994,13 @@ new_highway <- new_highway %>%
 st_transform(st_crs(metro_counties)) %>%
   st_intersection(metro_counties) 
 
-#which new highway do we use?
-new_highway <- st_read("C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Data/shapefile/AtlantaMetro_Major_Roads_ADDITION/Highways_addition.shp")
-
 #new_highway <- st_write(new_highway,"C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Data/geojson/new_highway.geojson")
 
 #ALL HIGHWAYS MERGED TOGETHER -- highways_all --  
 
-highways_all <- st_read("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/a5a5b0c9099b97f68c0d1aeadcdfe9dbd2960a9a/Data/geojson/highways_all.geojson")
-#highways_all <- st_write(highways_addition,"C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Data/geojson/highways_all.geojson")
-
-#is this supposed to be highways add?
-highways_all <- st_read("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/a5a5b0c9099b97f68c0d1aeadcdfe9dbd2960a9a/Data/geojson/highways_add.geojson") %>% 
+highways_all <- st_read("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/a5a5b0c9099b97f68c0d1aeadcdfe9dbd2960a9a/Data/geojson/highways_all.geojson") %>% 
 st_transform(st_crs(metro_counties)) %>%
   st_intersection(metro_counties)
-
-highways_all <- highways_all %>% 
-st_transform(st_crs(metro_counties)) %>%
-  st_intersection(metro_counties) 
 ```
 
 
@@ -1036,8 +1024,8 @@ ggplot() +
 
 ```
 
-```{r testing highway_add}
-#Skip#
+```{r testing highway_add, eval=FALSE}
+#delete?
 ggplot() +
   geom_sf(data=Atlanta_MSA) +
   geom_point(data=dev_change_fishnet, 
@@ -1053,7 +1041,7 @@ ggplot() +
 ```{r create highway distance raster with new highway segment }
 
 new_highway_raster <- 
-  as(highways_add,'Spatial') %>%
+  as(highways_all,'Spatial') %>%
   rasterize(.,emptyRaster)
 
 new_highway_raster_distance <- distance(new_highway_raster)
@@ -1076,13 +1064,12 @@ ggplot() +
   scale_colour_manual(values = palette5,
                       labels=substr(quintileBreaks(new_highwayPoints_fishnet,"distance_highways"),1,8),
                       name="Quintile\nBreaks") +
-  geom_sf(data=highways_add, colour = "black") +
+  geom_sf(data=highways_all, colour = "black") +
   labs(title = "Distance to Highways",
        subtitle = "As fishnet centroids; Highways visualized in black") +
   mapTheme
 
-
-
+#highlight new highway
 ```
 ## Scenario 2: Demand-side Change Forecast
 
@@ -1142,7 +1129,7 @@ countyPopulation_2029 %>%
   ggplot(aes(reorder(NAME,-Value),Value)) +
   geom_bar(aes(fill=Variable), stat = "identity", position = "dodge") +
   scale_fill_manual(values = palette2,
-                    labels=c("2019","2020"),
+                    labels=c("2019","2029"),
                     name="Population") +
   labs(title="Population Change by County: 2019 - 2029",
        x="County", y="Population") +
@@ -1152,7 +1139,7 @@ countyPopulation_2029 %>%
 
 ### Predicting Development Demand (based on projected pop)
 
-Distribute projected population across the study area by weighting it according to a grid cell's 2019 population and then subtracting 2019 pop to get `pop_change`. Then, use Model XX to predict development for 2029 based on the projected population change and lag development features.
+Distribute projected population across the study area by weighting it proportionally according to a grid cell's 2019 population and then subtracting 2019 pop to get `pop_change`. Then, use Model XX to predict development for 2029 based on the projected population change and lag development features.
 
 ```{r predicted development demand 2029}
 dat_infill <-
@@ -1178,6 +1165,13 @@ dat_infill %>%
   mapTheme
 ```
 
+# Allocation
+
+Now that we have an idea of where development demand is most likely to occur in 2029, we compare predicted demand against environmentally sensitive land uses to figure out which land uses we recommend be allocated for development and which be reserved for conservation.
+
+## Sensitive Land Cover Lost
+
+We create an indicator of sensitive 
 
 
 # Conclusion
