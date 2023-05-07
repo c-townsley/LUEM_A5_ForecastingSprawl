@@ -1032,12 +1032,14 @@ ggplot() +
 
 ```{r create highway distance raster with new highway segment }
 
-new_highway_raster <- 
-  as(highways_all,'Spatial') %>%
-  rasterize(.,emptyRaster)
+#new_highway_raster <- 
+ # as(highways_all,'Spatial') %>%
+ # rasterize(.,emptyRaster)
 
-new_highway_raster_distance <- distance(new_highway_raster)
-names(new_highway_raster_distance) <- "distance_highways"
+#new_highway_raster_distance <- distance(new_highway_raster)
+#names(new_highway_raster_distance) <- "distance_highways"
+
+#writeRaster(new_highway_raster_distance, filename=file.path(rast_dir, "highways_dist.tif"), format="GTiff", overwrite=TRUE)
 
 new_highwayPoints <-
   rasterToPoints(new_highway_raster_distance) %>%
@@ -1281,6 +1283,7 @@ county_specific_metrics %>%
     labs(title= "County Specific Allocation Metrics", subtitle= "As rates", x="Indicator", y="Rate") +
     plotTheme + theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position="bottom")
 ```
+
 Explain the variables above.
 
 Looking at the development suitability indicators across the 21 counties of Georgia's MSA, we see that all counties have a large percentage of forested land and therefore of sensitive regions. Looking at the rest of the indicators together however, we can see that some counties are better suited for development than others.
