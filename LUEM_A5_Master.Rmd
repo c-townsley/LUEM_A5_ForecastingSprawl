@@ -974,14 +974,9 @@ ggplot(data=ConfusionMatrix.metrics) +
 
 ## Scenario 1: Supply-side Change Forecast
 
-> From Assignment: In this scenario, you will "plan" a new large-scale development, like a new highway or public transportation line. Your model will probably use transit proximity as a predictor of land use change -- what happens when you make new infrastructure and then predict the location of new development?
-
-> Draw this new development in ArcGIS or the mapedit package (if it requires new infrastructure) and you will briefly describe the nature of this new development (What is it? What kind of new demand do you expect it to generate?). Please be creative in how you design/describe your intervention.
-
-> After drawing the new development, come up with a scenario-based population projection for that area and create a development forecast for 2029.
+To begin our supply-side projection, we imagine a new highway in eastern Atlanta where development between 2008 and 2019 has not previously concentrated. This was also a forested area, so the fact that much development had not happened there over the earlier period aroused our curiosity. This way, we can test the extend that a new road investment influences development in on most desirable area of land cover. This new road was created in GIS and merged with the existing highways shapefile.
 
 ```{r import new roads files}
-#We created a new highway in eastern Atlanta where development between 2008 and 2019 has not previously concentrated. This was also a forested area, so the fact that much development had not happened there over the earlier period aroused our curiosity. This way, we can test the extend that a new road investment influences development in on most desirable area of land cover.
 
 #NEW HIGHWAY SEGMENT ONLY
 new_highway <- st_read("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/a5a5b0c9099b97f68c0d1aeadcdfe9dbd2960a9a/Data/geojson/new_highway.geojson")
@@ -1022,9 +1017,9 @@ ggplot() +
 
 ```{r create highway distance raster with new highway segment }
 
-#new_highway_raster <- 
-#   as(highways_all,'Spatial') %>%
-#   rasterize(.,emptyRaster)
+new_highway_raster <- 
+   as(highways_all,'Spatial') %>%
+   rasterize(.,emptyRaster)
 
 #writeRaster(new_highway_raster_distance, filename=file.path(rast_dir, "new_highway_dist.tif"), format="GTiff", overwrite=TRUE)
 
@@ -1044,6 +1039,7 @@ new_highwayPoints_fishnet <-
 
 ggplot() +
   geom_sf(data=metro_counties) +
+   geom_sf(data=new_highway, colour="cyan", linewidth=1) +
   geom_point(data=new_highwayPoints_fishnet, aes(x=xyC(new_highwayPoints_fishnet)[,1], 
                                              y=xyC(new_highwayPoints_fishnet)[,2], 
                  colour=factor(ntile(distance_highways,5))),size=1.5) +
@@ -1052,7 +1048,7 @@ ggplot() +
                       name="Quintile\nBreaks") +
   geom_sf(data=highways_all, colour = "black") +
   labs(title = "Distance to Highways",
-       subtitle = "As fishnet centroids; Highways visualized in black") +
+       subtitle = "As fishnet centroids; Existing highways visualized in black; new highway in cyan") +
   mapTheme
 
 #highlight new highway
@@ -1193,7 +1189,7 @@ ggplot() +
 
 ## Landscape Fragmentation
 
-We then group areas where the `wetlands19` and `forest11` rasters are contiguous to create a `sensitive_regions` layer containing all sensitive regions with an area greater than 1 acre.
+We then group areas where the `wetlands19` and `forest11` raster cells are contiguous to create a `sensitive_regions` layer containing all sensitive regions with an area greater than 1 acre.
 
 ```{r sensitive regions}
 sensitiveRegions <- 
