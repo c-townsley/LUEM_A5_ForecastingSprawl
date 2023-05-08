@@ -42,6 +42,7 @@ library(viridis)
 library(igraph)
 library(maptools)
 library(reactable)
+library(classInt)
 
 plotTheme <- theme(
   plot.title =element_text(size=12),
@@ -377,8 +378,8 @@ aggregatedRasters19 <-
   dplyr::select(developed19, forest19, farm19, wetlands19, otherUndeveloped19, water19) %>%
   mutate_if(is.numeric, as.factor)
 
-rasters19_map <- aggregatedRasters19 %>%
-  gather(var,value,developed19:water19) %>%
+rasters08_map <- aggregatedRasters08 %>%
+  gather(var,value,developed08:water08) %>%
   st_cast("POLYGON") %>%    #just to make sure no weird geometries slipped in
   mutate(X = xyC(.)$x,
          Y = xyC(.)$y) %>%
@@ -397,14 +398,15 @@ rasters19_map <- aggregatedRasters19 %>%
           color = "black",
           fill = "transparent",
           linewidth = .5) +
-    labs(title = "Land Cover Types, 2019",
+    labs(title = "Land Cover Types, 2008",
          subtitle = "As fishnet centroids") +
    mapTheme +
    theme()  +
    theme(legend.position = "none")
 
-rasters19_map
+rasters08_map
 ```
+
 ### Land Cover Change
 
 To identify areas with land cover change, we use the raster datasets and reclassify the land cover types as numerical values, where developed lands have the value of 1 and undeveloped lands have the value of 0, for each of the years' datasets. We are then able to add these datasets together on a cell-by-cell basis to understand where development has occurred in 2019, where it was not in 2008. When added together, the cells with 1-values represent where new development has occurred; a value of 2 shows where development was in 2008 and remained in 2019, and 0 value shows land that was and remains undeveloped. This function is like using raster calculator in GIS.
@@ -435,12 +437,21 @@ names(lc_2008r) <- "dev08"
 lc_2019r[lc_2019r < 1] <- 0
 names(lc_2019r) <- "dev19"
 
-
 development_change <- lc_2008r + lc_2019r
 
-hist(development_change)
+# convert the raster to a vector
+dev_change_vec <- as.vector(development_change)
 
+# create the histogram plot with ggplot2
+ggplot(data.frame(value = dev_change_vec), aes(x=value)) + 
+  geom_histogram(binwidth=.5, fill=highlight, color="white") +
+  labs(title="Development Change by Type (2008-2019)",
+       subtitle = "0 = Remained Undeveloped, 1 = New Development, 2 = Already Developed",
+       x="Development Change",
+       y="Frequency") +
+  plotTheme
 ```
+
 We can then visualize where the new development cells with the 1 value are. New development has been scattered throughout the MSA.
 
 ```{r plotting land cover change, fig.width=8}
@@ -644,6 +655,9 @@ AtlantaHighways <-
   st_intersection(metro_counties) %>% 
   filter(FEATURE_TY == "State Highway")
 
+emptyRaster <- development_change
+emptyRaster[] <- NA
+
 ggplot() +
   geom_point(data=dev_change_fishnet, 
              aes(x=xyC(dev_change_fishnet)$x, y=xyC(dev_change_fishnet)$y, colour=development_change)) +
@@ -660,10 +674,6 @@ ggplot() +
 We then calculate how far each fishnet cell is from a highway. We do this by converting the highway layer to raster, converting the raster to points, and then calculating the mean distance from highway for each grid cell.
 
 ```{r convert highways to raster, eval=FALSE}
-##SKIP##
-emptyRaster <- development_change
-emptyRaster[] <- NA
-
 #create a raster layer of highways
 highway_raster <- 
   as(AtlantaHighways,'Spatial') %>%
@@ -745,19 +755,29 @@ AtlantaMSA_fishnet$lagDevelopment08 <-
                 xyC(filter(aggregatedRasters08, developed08==1)),
                 2)
 
+# compute natural breaks for "lagDevelopment08"
+breaks <- classIntervals(AtlantaMSA_fishnet$lagDevelopment08, n=4, style="jenks")
+
+#Plot
 ggplot() +
   geom_sf(data=metro_counties) +
   geom_point(data=AtlantaMSA_fishnet, 
              aes(x=xyC(AtlantaMSA_fishnet)[,1], y=xyC(AtlantaMSA_fishnet)[,2], 
-                 colour=factor(ntile(lagDevelopment08,5))), size=1.5) +
-  scale_colour_manual(values = palette5,
-                     labels=substr(quintileBreaks(AtlantaMSA_fishnet,"lagDevelopment"),1,7),
-                     name="Quintile\nBreaks") +
+                 colour=cut(lagDevelopment08, breaks$brks)), size=1.5) +
+  scale_colour_manual(values=palette5,
+                      labels=format(breaks$brks, nsmall=1),
+                      name="Distance (ft)") +
+  geom_sf(data=metro_counties,
+          color = "white",
+          fill = "transparent",
+          linewidth = .5) +
+  geom_sf(data=Atlanta_MSA,
+          color = "black",
+          fill = "transparent",
+          linewidth = .75) +
   labs(title = "Spatial Lag to 2008 Development",
        subtitle = "As fishnet centroids") +
   mapTheme
-
-#try natural breaks (manual)
 ```
 
 # Create Final Dataset
@@ -815,8 +835,7 @@ dat %>%
 
 From this conversion table, we see that forested areas in 2008 were the most likely to have been developed by 2019, at 8.85% likelihood of development. This shows that Atlanta has a preference for developing woodlands first, with areas adjacent to those that are already developed as a close second. 
 
-```{r land cover conversion tables, fig.width=10}
-
+```{r land cover conversion tables, fig.width=6}
 dat %>%
   dplyr::select(development_change:otherUndeveloped08,developed08) %>%
   gather(Land_Cover_Type, Value, -development_change, -geometry) %>%
@@ -827,8 +846,7 @@ dat %>%
     mutate(Conversion_Rate = paste0(round(100 * n/sum(n), 2), "%")) %>%
     filter(development_change == 1) %>%
   dplyr::select(Land_Cover_Type,Conversion_Rate) %>%
-  reactable()
-
+  reactable(theme = reactableTheme(style = list(fontFamily = "Arial, sans-serif", fontSize = "0.875rem")))
 ```
 
 ## ID areas of land use change period 1 -\> period 2
@@ -880,7 +898,7 @@ map_dfc(modelList, function(x)pR2(get(x)))[4,] %>%
   setNames(paste0("Model",1:6)) %>%
   gather(Model,McFadden) %>%
   ggplot(aes(Model,McFadden)) +
-    geom_bar(stat="identity") +
+    geom_bar(stat="identity", fill = highlight) +
     labs(title= "McFadden R-Squared by Model") +
     plotTheme
 
@@ -892,7 +910,7 @@ testSetProbs <-
              probs = predict(Model6, datTest, type="response")) 
   
 ggplot(testSetProbs, aes(probs)) +
-  geom_density(aes(fill=class), alpha=0.5) +
+  geom_density(aes(fill=class), alpha=0.75) +
   scale_fill_manual(values = palette2,
                     labels=c("No Change","New Development")) +
   labs(title = "Histogram of test set predicted probabilities",
@@ -903,7 +921,7 @@ ggplot(testSetProbs, aes(probs)) +
 
 # Accuracy
 
-```{r testing model sensitivity: true/false positives/negatives}
+```{r testing model sensitivity}
 options(yardstick.event_first = FALSE)
 
 testSetProbs <- 
@@ -918,7 +936,7 @@ testSetProbs %>%
   summarize(Sensitivity = round(yardstick::sens_vec(class,factor(Value)),2),
             Specificity = round(yardstick::spec_vec(class,factor(Value)),2),
             Accuracy = round(yardstick::accuracy_vec(class,factor(Value)),2)) %>% 
-  reactable()
+  reactable(theme = reactableTheme(style = list(fontFamily = "Arial, sans-serif", fontSize = "0.875rem")))
 
 ```
 
@@ -937,6 +955,14 @@ ggplot() +
   facet_wrap(~Variable) +
   scale_colour_manual(values = palette2, labels=c("No Change","New Development"),
                       name="") +
+  geom_sf(data=metro_counties,
+          color = "white",
+          fill = "transparent",
+          linewidth = .5) +
+  geom_sf(data=Atlanta_MSA,
+          color = "black",
+          fill = "transparent",
+          linewidth = .75) +
   labs(title="Development Predictions - Low Threshold") + 
   mapTheme +
   theme(legend.position = "bottom")
@@ -964,6 +990,14 @@ ggplot(data=ConfusionMatrix.metrics) +
   facet_wrap(~Variable) +
   scale_colour_manual(values = c(highlight, gray), labels=c("Correct","Incorrect"),
                        name="") +
+  geom_sf(data=metro_counties,
+          color = "white",
+          fill = "transparent",
+          linewidth = .5) +
+  geom_sf(data=Atlanta_MSA,
+          color = "black",
+          fill = "transparent",
+          linewidth = .75) +
   labs(title="Development Predictions - Low Threshold") +
   mapTheme +
   theme(legend.position = "bottom")
@@ -1021,11 +1055,11 @@ new_highway_raster <-
    as(highways_all,'Spatial') %>%
    rasterize(.,emptyRaster)
 
+#new_highway_raster_distance <- distance(new_highway_raster)
 #writeRaster(new_highway_raster_distance, filename=file.path(rast_dir, "new_highway_dist.tif"), format="GTiff", overwrite=TRUE)
 
 new_highway_raster_distance <- raster(paste(dir_git, "187ac7cf231257fc52de0f7f2a1dc2014e4e6f2d/Data/raster/new_highway_dist.tif", sep='/'))
 
-new_highway_raster_distance <- distance(new_highway_raster)
 names(new_highway_raster_distance) <- "distance_highways"
 
 new_highwayPoints <-
@@ -1151,7 +1185,7 @@ dat_infill %>%
 
 Now that we have an idea of where development demand is most likely to occur in 2029, we compare predicted demand against environmentally sensitive land uses to figure out which land uses we recommend be allocated for development and which be reserved for conservation.
 
-Let's revisit how each kind of land cover was distributed in 2019.
+Let's first orient ourselves to how each kind of land cover was distributed in 2019.
 
 ```{r aggregate 2019 rasters, fig.width=10}
 dat2 <-
@@ -1162,13 +1196,45 @@ dat2 <-
   st_sf() %>%
   st_cast("POLYGON")
 
+rasters19_map <- aggregatedRasters19 %>%
+  gather(var,value,developed19:water19) %>%
+  st_cast("POLYGON") %>%    #just to make sure no weird geometries slipped in
+  mutate(X = xyC(.)$x,
+         Y = xyC(.)$y) %>%
+  ggplot() +
+    geom_sf(data=metro_counties) +
+    geom_point(aes(X,Y, colour=as.factor(value))) +
+    facet_wrap(~var) +
+    scale_colour_manual(values = c(gray, highlight),
+                        labels=c("False","True"),
+                        name = "") +
+    geom_sf(data=metro_counties,
+          color = "white",
+          fill = "transparent",
+          linewidth = .25) +
+    geom_sf(data=Atlanta_MSA,
+          color = "black",
+          fill = "transparent",
+          linewidth = .5) +
+    labs(title = "Land Cover Types, 2019",
+         subtitle = "As fishnet centroids") +
+   mapTheme +
+   theme()  +
+   theme(legend.position = "none")
+
 rasters19_map
 ```
+
+We see that much of the metro area, including developed areas, is forested - meaning it has a large amount of tree cover. Farms and other undeveloped lands tend to be located more on the outer edges. Wetlands on the other hand are concentrated mostly in the metro region's southern counties, along with a number of small ponds and rivers. The largest water bodies, however, are located in the north of the metro.
+
+Mapping these land cover types separately allows us to see that some counties may be better suited to development, while others have more sensitive land cover that should be protected.
+
+However, this method does not allow us to pinpoint where these locations are with much specificity.
 
 
 ## Sensitive Land Cover Lost
 
-We create an indicator layer to show grid cells where forest or wetlands were lost to development between 20098 and 2019.
+To better understand where ecologically important lands are being lost for development, we create an indicator layer called  `sensitive_lost19`. This new layer shows where forest or wetlands were lost to development between 2009 and 2019.
 
 ```{r sensitive landcover loss, fig.width=8}
 dat2 <-
@@ -1182,26 +1248,34 @@ ggplot() +
   scale_colour_manual(values = c(gray, highlight),
                       labels=c("No Change","Sensitive Lost"),
                       name = "") +
+  geom_sf(data = metro_counties, fill = "transparent", color = "white", linewidth = .5) +
+  geom_sf(data = Atlanta_MSA, fill = "transparent", color = "black", linewidth = .75) +
   labs(title = "Sensitive lands lost: 2009 - 2019",
        subtitle = "As fishnet centroids") +
   mapTheme
 ```
 
+Interestingly, we see that more sensitive areas were lost to development near the metro's center during this period.
+
 ## Landscape Fragmentation
+
 
 We then group areas where the `wetlands19` and `forest11` raster cells are contiguous to create a `sensitive_regions` layer containing all sensitive regions with an area greater than 1 acre.
 
-```{r sensitive regions}
+To contextualize these sensitive locations, we group areas where the `wetlands19` and `forest11` rasters are contiguous to create a `sensitive_regions` layer containing all sensitive regions with an area greater than 1 acre.
+
+```{r sensitive regions, fig.width=8}
 sensitiveRegions <- 
   raster::clump(wetlands19 + forest19) %>% #units are meters
   rasterToPolygons() %>%
   st_as_sf() %>%
   group_by(clumps) %>% 
   summarize() %>%
-    mutate(Acres = as.numeric(st_area(.) * 0.0000229568)) %>% #do we need to change this conversion factor? There are 0.00024711 acres per square meter and 4046.86 square meters in an acre
-    filter(Acres > 3954)  %>%
+    mutate(Acres = as.numeric(st_area(.) * 0.00024711)) %>% #There are 0.00024711 acres per square meter and 4046.86 square meters in an acre
+    filter(Acres > 4046.86)  %>%
   dplyr::select() %>%
   raster::rasterize(.,emptyRaster) 
+
 sensitiveRegions[sensitiveRegions > 0] <- 1  
 names(sensitiveRegions) <- "sensitiveRegions"
 
@@ -1217,14 +1291,20 @@ ggplot() +
   scale_colour_manual(values = c(gray, highlight),
                       labels=c("Other","Sensitive Regions"),
                       name="") +
+  geom_sf(data = metro_counties, fill = "transparent", color = "white", linewidth = .5) +
+  geom_sf(data = Atlanta_MSA, fill = "transparent", color = "black", linewidth = .75) +
   labs(title = "Sensitive regions",
        subtitle = "Continous areas of either wetlands or forests\ngreater than 1 acre") +
   mapTheme
 ```
+This gives us a much more clear understanding of which areas might be most sensitive to development than the mapping each type of land cover separately did. We see that most of the counties along the outer border of the Atlanta metro region still have relatively low landscape fragmentation. This suggests that these counties should prioritize infill development over suburban sprawl.
+
 
 ## Summarize by County
 
-Next we summarize a series of supply and demand metrics by county. We use this to better understand each county's suitability for development.
+To better understand how these characteristics compare across counties, we create a matrix of demand side and suitability factors.
+
+This matrix allows us to better understand each county's suitability for development.
 
 ```{r county specific metrics}
 county_specific_metrics <- 
@@ -1250,7 +1330,7 @@ county_specific_metrics <-
 ```
 
 
-```{r plot county specific metrics, fig.width=12, fig.height=10}
+```{r plot county specific metrics, fig.width=12, fig.height=11}
 county_specific_metrics %>%
   gather(Variable, Value, -NAME, -geometry) %>%
   mutate(Variable = factor(Variable, levels=c("Population_Change_Rate","Mean_Development_Demand",
@@ -1272,7 +1352,16 @@ county_specific_metrics %>%
     plotTheme + theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position="bottom")
 ```
 
-Explain the variables above.
+This chart shows three types of metrics:  
+* Demand-side factors  
+* Factors suitable for development, and  
+* Factors not suitable for development
+
+The demand side factors are `Mean_Development_Demand` and `Population_Change_Rate`. `Mean_Development_Demand` is the mean value of predicted development demand for a given county in 2029. `Population_Change_Rate` is share of a county's population that is projected to move in between 2019 and 2029.
+
+Factors suitable for development are area of `Total_Farmland` and area of `Total_Undeveloped` land in a given county.
+
+Factors not suitable for development are area of `Sensitive_Regions`, `Sensitive_Land_Lost`, and `Total_Wetlands` in a county.
 
 Looking at the development suitability indicators across the 21 counties of Georgia's MSA, we see that all counties have a large percentage of forested land and therefore of sensitive regions. Looking at the rest of the indicators together however, we can see that some counties are better suited for development than others.
 
@@ -1284,7 +1373,7 @@ The satellite image below of development in Hall County shows why there is a lar
 
 On the other hand, Clayton County appears to be poorly suited for development because it has relatively high development demand, is experiencing population growth, has a low amount of farmland and undeveloped land, and has a relatively high amount of wetlands. 
 
-Let's look more closely at Hall County and Calyton County to see what these traits look like spatially.
+Let's look more closely at Hall County (in the North) and Clayton County (to the South)  to see what these traits look like spatially.
 
 ```{r Hall and Clayton Counties}
 ggplot() +
@@ -1302,7 +1391,7 @@ ggplot() +
 
 First, we map supply and demand factors for Hall County, to examine an example of a county well suited to further development.
 
-**Note:** we do not include forest in the "not suitable for development" category in these maps due to the large amount of tree cover in the Atlanta region.
+**Note:** we do not include forest in the "not suitable for development" category in these maps due to the large amount of tree cover in the Atlanta region's developed areas.
 
 ```{r hall county, fig.width=12}
 HallCounty <-
@@ -1349,7 +1438,8 @@ ggplot() +
   guides(fill = guide_legend(order = 1), colour = guide_legend(order = 2)), ncol=2)
 ```
 
-Describe results
+Mapping Hall County's development potential and projected population with developed land and wetlands (the "not suitable" land) we see that the County still has a significant amount of area that is suitable for development. In particular, this county would do well to prioritize infill development between highways in its northwest and southern portions where there is predicted to be both high development demand and significant population growth. This would also help to reduce forest fragmentation and pressure on wetlands in the county's east and northeast.
+
 
 ## Clayton County
 
@@ -1401,6 +1491,8 @@ ggplot() +
   guides(fill = guide_legend(order = 1), colour = guide_legend(order = 2)), ncol=2)
 ```
 
-Describe results
+In contrast to Hall County's relatively large amount of land that is suitable for development, we see that Clayton County has almost none. The county is almost entirely developed and the two areas in the southern portion of the county that are not developed are dominated by wetland areas that are not suitable for development.
+
+Furthermore, the map shows that although the remaining cells that are suitable for development, are predicted to experience development demand, and are projected to experience population growth all are near wetland areas. Therefore, Clayton County is an ideal location for conservation rather than development in the Atlanta metro area.
 
 # Conclusion
