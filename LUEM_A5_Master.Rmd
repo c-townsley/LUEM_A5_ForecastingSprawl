@@ -160,6 +160,15 @@ Data level: Census tract
 
 The following chunks of code will collect the prerequisite data needed for the model from the two years of study, structure the data in preparation for modeling, and run the model supply- and demand-side based on the study years' data to project for 2030. 
 
+Below is the structure of our project:  
+
+* Data Gathering and Feature Engineering    
+* Data Exploration  
+* Model Building and Testing  
+* Projected Planning Scenarios  
+* Development Allocation
+* Conclusion
+
 # Data Gathering and Feature Engineering
 
 These code chunks pull in and visualize our spatial datasets of the Atlanta MSA's 21 counties. 
@@ -362,7 +371,7 @@ names(water19) <- "water19"
 
 This distilled, categorical dataset for each year is then aggregated to our fishnet of the Atlanta MSA. The resulting maps show that Atlanta is a heavily forested area. Development is vast, with its anchor in the center of the MSA, radiating outward. A significant amount of farmland exists in a thick band against the MSA's periphery. Undeveloped areas are scattered, mostly near the MSA's periphery.   
 
-```{r turn rasters into fishnet dataframe, fig.width=8, fig.height=6}
+```{r turn rasters into fishnet dataframe, fig.width=10}
 
 theRasterList08 <- c(developed08, forest08, farm08, wetlands08, otherUndeveloped08, water08)
 
@@ -667,7 +676,7 @@ ggplot() +
   geom_sf(data=AtlantaHighways, color = highlight, linewidth = .5) +
   geom_sf(data = Atlanta_MSA, fill = "transparent",
           color = "black", linewidth = .75) +
-  labs(title = "Highways and New Development") +
+  labs(title = "Highways and New Development (2019)") +
   mapTheme
 ```
 
@@ -953,7 +962,7 @@ predsForMap <-
 ggplot() +
   geom_point(data=predsForMap, aes(x=xyC(predsForMap)[,1], y=xyC(predsForMap)[,2], colour=Value)) +
   facet_wrap(~Variable) +
-  scale_colour_manual(values = palette2, labels=c("No Change","New Development"),
+  scale_colour_manual(values = c(gray, highlight), labels=c("No Change","New Development"),
                       name="") +
   geom_sf(data=metro_counties,
           color = "white",
@@ -1085,11 +1094,10 @@ ggplot() +
                       labels=substr(quintileBreaks(new_highwayPoints_fishnet,"distance_highways"),1,8),
                       name="Quintile\nBreaks") +
   geom_sf(data=highways_all, colour = "black") +
+  geom_sf(data=new_highway, colour="cyan", linewidth=1) +
   labs(title = "Distance to Highways",
        subtitle = "As fishnet centroids; Highways visualized in black") +
   mapTheme
-
-#highlight new highway
 ```
 
 ## Scenario 2: Demand-side Change Forecast
