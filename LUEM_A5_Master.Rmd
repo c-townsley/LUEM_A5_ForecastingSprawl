@@ -78,6 +78,7 @@ mapTheme <- theme(plot.title =element_text(size=12),
 
 #Colors: Viridis Plasma (option "C")
 gray <- "#D3D3D3"
+darkGray <- "#505251"
 highlight <- "#0D0887FF"
 palette2 <- c("#FA9E3BFF", "#0D0887FF")
 palette3 <- c("#FDC926FF", "#D8576BFF", "#0D0887FF")
@@ -138,7 +139,7 @@ aggregateRaster <- function(inputRasterList, AtlantaMSA_fishnet) {
   }
   #output all aggregates as one large fishnet
    return(theseFishnets)
-  }
+}
 ```
 
 # Introduction: This Model and Its Significance to Planners
@@ -202,6 +203,8 @@ ggplot() +
   labs(title = "Atlanta 21 County MSA")
 ```
 
+
+
 ```{r msa conversion, include=FALSE, eval=FALSE}
 ## SKIP ##
 #Convert shapefile to geojson so can store on github
@@ -218,7 +221,7 @@ Now, this section creates a fishnet of the Atlanta MSA using 1000'x1000' cells. 
 
 ```{r fishnet}
 AtlantaMSA_fishnet <- 
-  st_make_grid(metro_counties, cellsize = 1000, square = FALSE) %>%
+    st_make_grid(metro_counties, cellsize = 1000, square = TRUE) %>%
   st_sf() %>% 
   st_transform("ESRI:102267")
 
@@ -656,7 +659,7 @@ ggplot() +
 
 We then calculate how far each fishnet cell is from a highway. We do this by converting the highway layer to raster, converting the raster to points, and then calculating the mean distance from highway for each grid cell.
 
-```{r convert highways to raster}
+```{r convert highways to raster, eval=FALSE}
 ##SKIP##
 emptyRaster <- development_change
 emptyRaster[] <- NA
@@ -681,6 +684,9 @@ highway_raster <- raster(paste(dir_git, "a5a5b0c9099b97f68c0d1aeadcdfe9dbd2960a9
 
 highway_raster_distance <- distance(highway_raster)
 names(highway_raster_distance) <- "distance_highways"
+
+#Export highway raster distance than import file from github to speed processing
+#highway_raster <- raster(paste(dir_git, "a5a5b0c9099b97f68c0d1aeadcdfe9dbd2960a9a/Data/raster/highway_raster.tif", sep='/'))
 
 highwayPoints <-
   rasterToPoints(highway_raster_distance) %>%
@@ -1013,25 +1019,16 @@ ggplot() +
 
 ```
 
-```{r testing highway_add, eval=FALSE}
-#delete?
-ggplot() +
-  geom_sf(data=Atlanta_MSA) +
-  geom_point(data=dev_change_fishnet, 
-             aes(x=xyC(dev_change_fishnet)$x, y=xyC(dev_change_fishnet)$y, colour=development_change)) +
-  scale_color_manual(values = palette2,
-                      labels=c("No Change","New Development"),
-                      name = "") +
-  labs(title = "Land Cover Development Change", subtitle = "Atlanta metro area | Fishnet centroids with existing highways in black and a new highway in cyan") +
-  geom_sf(data=highways_all, colour="black", linewidth=.5)+
-  mapTheme
-```
 
 ```{r create highway distance raster with new highway segment }
 
-new_highway_raster <- 
-  as(highways_all,'Spatial') %>%
-  rasterize(.,emptyRaster)
+#new_highway_raster <- 
+#   as(highways_all,'Spatial') %>%
+#   rasterize(.,emptyRaster)
+
+#writeRaster(new_highway_raster_distance, filename=file.path(rast_dir, "new_highway_dist.tif"), format="GTiff", overwrite=TRUE)
+
+new_highway_raster_distance <- raster(paste(dir_git, "187ac7cf231257fc52de0f7f2a1dc2014e4e6f2d/Data/raster/new_highway_dist.tif", sep='/'))
 
 new_highway_raster_distance <- distance(new_highway_raster)
 names(new_highway_raster_distance) <- "distance_highways"
@@ -1278,8 +1275,136 @@ county_specific_metrics %>%
     labs(title= "County Specific Allocation Metrics", subtitle= "As rates", x="Indicator", y="Rate") +
     plotTheme + theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position="bottom")
 ```
+
+Explain the variables above.
+
 Looking at the development suitability indicators across the 21 counties of Georgia's MSA, we see that all counties have a large percentage of forested land and therefore of sensitive regions. Looking at the rest of the indicators together however, we can see that some counties are better suited for development than others.
 
-For example, we see that Hall county has both a high rate of development demand and of population change. It also has a relatively large amount of farmland and a relatively low amount of total wetlands and senstive land lost. Together, these factors suggest that Hall County has ample space for development that will not impact sensitive areas (other than forest).
+For example, we see that Hall County has both a high rate of development demand and of population change. It also has a relatively large amount of farmland and a relatively low amount of total wetlands and senstive land lost. Together, these factors suggest that Hall County has ample space for development that will not impact sensitive areas (other than forest).
+
+The satellite image below of development in Hall County shows why there is a large amount of forested land cover across the Atlanta metro region. There seems to be a regional preference for dispersed development in forested land.
+
+![](paste(dir_ct, 'Images/Satellite_HallCounty.png', sep='/'))
+
+On the other hand, Clayton County appears to be poorly suited for development because it has relatively high development demand, is experiencing population growth, has a low amount of farmland and undeveloped land, and has a relatively high amount of wetlands. 
+
+Let's look more closely at Hall County and Calyton County to see what these traits look like spatially.
+
+```{r Hall and Clayton Counties}
+ggplot() +
+  geom_sf(data = metro_counties, fill = gray, color = "white", linewidth = .5) +
+  geom_sf(data = filter(metro_counties, NAME=="Hall" | NAME=="Clayton"), fill = "#FDC926FF", color = "white", linewidth = .5) +
+  geom_sf(data = Atlanta_MSA, fill = "transparent", color = "black", linewidth = .75) +
+  labs(title = "Atlanta MSA",
+       subtitle = "Hall and Clayton Counties Highlighted") +
+  mapTheme
+```
+
+
+
+## Hall County
+
+First, we map supply and demand factors for Hall County, to examine an example of a county well suited to further development.
+
+**Note:** we do not include forest in the "not suitable for development" category in these maps due to the large amount of tree cover in the Atlanta region.
+
+```{r hall county, fig.width=12}
+HallCounty <-
+  dat2 %>%
+    mutate(Development_Demand = predict(Model6, dat2, type="response")) %>%
+    filter(NAME == "Hall") %>%
+    rename("developed19" = developed19...2)
+
+HallCounty_landUse <- rbind(
+  filter(HallCounty, wetlands19 == 1 ) %>%
+  dplyr::select() %>% mutate(Land_Use = "Not Suitable"),
+  filter(HallCounty, developed19 == 1) %>%
+  dplyr::select() %>% mutate(Land_Use = "Developed"))
+
+grid.arrange(
+ggplot() +
+  geom_sf(data=HallCounty, aes(fill=factor(ntile(Development_Demand,5))), colour=NA) +
+  geom_point(data=HallCounty_landUse, aes(x=xyC(HallCounty_landUse)[,1], 
+                                        y=xyC(HallCounty_landUse)[,2], colour=Land_Use),
+                                        shape = 15, size = 3) +
+  geom_sf(data=st_intersection(AtlantaHighways,filter(metro_counties, NAME=="Hall")), linewidth=1, color = darkGray) +
+  scale_fill_manual(values = palette5, name="Development\nDemand",
+                    labels=substr(quintileBreaks(HallCounty,"Development_Demand"),1,5)) +
+  scale_colour_manual(values = c(gray,"#F0F921FF")) + 
+  geom_sf(data = filter(metro_counties, NAME=="Hall"), fill = "transparent", color = "black", linewidth = 1) +
+  labs(title = "Development Potential, 2029: Hall County",
+       subtitle = "With Developed and Unsuitable Areas from 2019") +
+  mapTheme +
+  guides(fill = guide_legend(order = 1), colour = guide_legend(order = 2)),
+
+ggplot() +
+  geom_sf(data=HallCounty, aes(fill=factor(ntile(pop_Change,5))), colour=NA) +
+  geom_point(data=HallCounty_landUse, aes(x=xyC(HallCounty_landUse)[,1], 
+                                        y=xyC(HallCounty_landUse)[,2], colour=Land_Use),
+                                        shape = 15, size = 3) +
+  geom_sf(data=st_intersection(AtlantaHighways, filter(metro_counties, NAME=="Hall")), linewidth=1, color = darkGray) +
+  scale_fill_manual(values = palette5, name="Population\nChange",
+                    labels=substr(quintileBreaks(HallCounty,"pop_Change"),1,5)) +
+  scale_colour_manual(values = c(gray,"#F0F921FF")) + 
+  geom_sf(data = filter(metro_counties, NAME=="Hall"), fill = "transparent", color = "black", linewidth = 1) +
+  labs(title = "Projected Population, 2029: Hall County",
+       subtitle = "With Developed and Unsuitable Areas from 2019") +
+  mapTheme +
+  guides(fill = guide_legend(order = 1), colour = guide_legend(order = 2)), ncol=2)
+```
+
+Describe results
+
+## Clayton County
+
+Next, we map the same supply and demand factors for Clayton County to examine an example of a county not well suited to further development.
+
+
+```{r Clayton County, fig.width=12}
+ClaytonCounty <-
+  dat2 %>%
+    mutate(Development_Demand = predict(Model6, dat2, type="response")) %>%
+    filter(NAME == "Clayton") %>%
+    rename("developed19" = developed19...2)
+
+ClaytonCounty_landUse <- rbind(
+  filter(ClaytonCounty, wetlands19 == 1 ) %>%
+  dplyr::select() %>% mutate(Land_Use = "Not Suitable"),
+  filter(ClaytonCounty, developed19 == 1) %>%
+  dplyr::select() %>% mutate(Land_Use = "Developed"))
+
+grid.arrange(
+ggplot() +
+  geom_sf(data=ClaytonCounty, aes(fill=factor(ntile(Development_Demand,5))), colour=NA) +
+  geom_point(data=ClaytonCounty_landUse, aes(x=xyC(ClaytonCounty_landUse)[,1], 
+                                        y=xyC(ClaytonCounty_landUse)[,2], colour=Land_Use),
+                                        shape = 15, size = 6) +
+  geom_sf(data=st_intersection(AtlantaHighways,filter(metro_counties, NAME=="Clayton")), linewidth=1, color = darkGray) +
+  scale_fill_manual(values = palette5, name="Development\nDemand",
+                    labels=substr(quintileBreaks(ClaytonCounty,"Development_Demand"),1,5)) +
+  scale_colour_manual(values = c(gray,"#F0F921FF")) + 
+  geom_sf(data = filter(metro_counties, NAME=="Clayton"), fill = "transparent", color = "black", linewidth = 1) +
+  labs(title = "Development Potential, 2029: Clayton County",
+       subtitle = "With Developed and Unsuitable Areas from 2019") + 
+  mapTheme +
+  guides(fill = guide_legend(order = 1), colour = guide_legend(order = 2)),
+
+ggplot() +
+  geom_sf(data=ClaytonCounty, aes(fill=factor(ntile(pop_Change,5))), colour=NA) +
+  geom_point(data=ClaytonCounty_landUse, aes(x=xyC(ClaytonCounty_landUse)[,1], 
+                                        y=xyC(ClaytonCounty_landUse)[,2], colour=Land_Use),
+                                        shape = 15, size = 6) +
+  geom_sf(data=st_intersection(AtlantaHighways, filter(metro_counties, NAME=="Clayton")), linewidth=1, color = darkGray) +
+  scale_fill_manual(values = palette5, name="Population\nChange",
+                    labels=substr(quintileBreaks(ClaytonCounty, "pop_Change"), 1, 5)) +
+  scale_colour_manual(values = c(gray,"#F0F921FF")) + 
+  geom_sf(data = filter(metro_counties, NAME=="Clayton"), fill = "transparent", color = "black", linewidth = 1) +
+  labs(title = "Projected Population, 2029: Clayton County",
+      subtitle = "With Developed and Unsuitable Areas from 2019") + 
+  mapTheme +
+  guides(fill = guide_legend(order = 1), colour = guide_legend(order = 2)), ncol=2)
+```
+
+Describe results
 
 # Conclusion
