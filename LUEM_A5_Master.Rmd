@@ -160,14 +160,20 @@ Data level: Census tract
 
 The following chunks of code will collect the prerequisite data needed for the model from the two years of study, structure the data in preparation for modeling, and run the model supply- and demand-side based on the study years' data to project for 2030. 
 
-Below is the structure of our project:  
+Below is the outline of our project:  
 
-* Data Gathering and Feature Engineering    
+* Data Gathering and Feature Engineering  
+    + Land Cover  
+    + Population  
+    + Highway Distance  
+    + The Spatial Lag of Development  
 * Data Exploration  
 * Model Building and Testing  
 * Projected Planning Scenarios  
-* Development Allocation
-* Conclusion
+    + Scenario 1: Supply-side Change Forecast (New Highway)  
+    + Scenario 2: Demand-side Change Forecast (Projected Population)  
+* Development Allocation  
+* Conclusion  
 
 # Data Gathering and Feature Engineering
 
@@ -789,7 +795,7 @@ ggplot() +
   mapTheme
 ```
 
-# Create Final Dataset
+## Create Final Dataset
 
 We then aggregate all this data to a final fishnet which we will feed into our model. This fishnet includes columns which indicate, cell-by-cell, if there has been development change, its land use, the cell's distance to highways, and its population in both years.
 
@@ -1017,10 +1023,6 @@ ggplot(data=ConfusionMatrix.metrics) +
 
 ## Scenario 1: Supply-side Change Forecast
 
-> From Assignment: In this scenario, you will "plan" a new large-scale development, like a new highway or public transportation line. Your model will probably use transit proximity as a predictor of land use change -- what happens when you make new infrastructure and then predict the location of new development?
-
-> Draw this new development in ArcGIS or the mapedit package (if it requires new infrastructure) and you will briefly describe the nature of this new development (What is it? What kind of new demand do you expect it to generate?). Please be creative in how you design/describe your intervention.
-
 > After drawing the new development, come up with a scenario-based population projection for that area and create a development forecast for 2029.
 
 ```{r import new roads files}
@@ -1100,9 +1102,9 @@ ggplot() +
   mapTheme
 ```
 
-## Scenario 2: Demand-side Change Forecast
+>Looks like we're missing predicted development for scenario 1?
 
-> From Assignment: Demand-side change: In this scenario, you will find or approximate 2029 population projections for your study area and then 'distribute' the 'new' population among all the census tracts in the region according to a logic or plan that you devise. You will use your population forecast and 2019 data to predict where new development will occur in 2029. Metropolitan planning organizations (MPOs) publish population forecasts for metro areas. If you can't find one for your area, make some reasonable projection of your own and note that you have done so.
+## Scenario 2: Demand-side Change Forecast
 
 Does the 2009 - 2019 period of development in Atlanta generalize to the 2019 - 2029 period?
 
