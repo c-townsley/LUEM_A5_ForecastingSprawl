@@ -42,6 +42,7 @@ library(viridis)
 library(igraph)
 library(maptools)
 library(reactable)
+library(classInt)
 
 plotTheme <- theme(
   plot.title =element_text(size=12),
@@ -436,12 +437,21 @@ names(lc_2008r) <- "dev08"
 lc_2019r[lc_2019r < 1] <- 0
 names(lc_2019r) <- "dev19"
 
-
 development_change <- lc_2008r + lc_2019r
 
-hist(development_change)
+# convert the raster to a vector
+dev_change_vec <- as.vector(development_change)
 
+# create the histogram plot with ggplot2
+ggplot(data.frame(value = dev_change_vec), aes(x=value)) + 
+  geom_histogram(binwidth=.5, fill=highlight, color="white") +
+  labs(title="Development Change by Type (2008-2019)",
+       subtitle = "0 = Remained Undeveloped, 1 = New Development, 2 = Already Developed",
+       x="Development Change",
+       y="Frequency") +
+  plotTheme
 ```
+
 We can then visualize where the new development cells with the 1 value are. New development has been scattered throughout the MSA.
 
 ```{r plotting land cover change, fig.width=8}
@@ -745,19 +755,29 @@ AtlantaMSA_fishnet$lagDevelopment08 <-
                 xyC(filter(aggregatedRasters08, developed08==1)),
                 2)
 
+# compute natural breaks for "lagDevelopment08"
+breaks <- classIntervals(AtlantaMSA_fishnet$lagDevelopment08, n=4, style="jenks")
+
+#Plot
 ggplot() +
   geom_sf(data=metro_counties) +
   geom_point(data=AtlantaMSA_fishnet, 
              aes(x=xyC(AtlantaMSA_fishnet)[,1], y=xyC(AtlantaMSA_fishnet)[,2], 
-                 colour=factor(ntile(lagDevelopment08,5))), size=1.5) +
-  scale_colour_manual(values = palette5,
-                     labels=substr(quintileBreaks(AtlantaMSA_fishnet,"lagDevelopment"),1,7),
-                     name="Quintile\nBreaks") +
+                 colour=cut(lagDevelopment08, breaks$brks)), size=1.5) +
+  scale_colour_manual(values=palette5,
+                      labels=format(breaks$brks, nsmall=1),
+                      name="Distance (ft)") +
+  geom_sf(data=metro_counties,
+          color = "white",
+          fill = "transparent",
+          linewidth = .5) +
+  geom_sf(data=Atlanta_MSA,
+          color = "black",
+          fill = "transparent",
+          linewidth = .75) +
   labs(title = "Spatial Lag to 2008 Development",
        subtitle = "As fishnet centroids") +
   mapTheme
-
-#try natural breaks (manual)
 ```
 
 # Create Final Dataset
@@ -815,8 +835,7 @@ dat %>%
 
 From this conversion table, we see that forested areas in 2008 were the most likely to have been developed by 2019, at 8.85% likelihood of development. This shows that Atlanta has a preference for developing woodlands first, with areas adjacent to those that are already developed as a close second. 
 
-```{r land cover conversion tables, fig.width=10}
-
+```{r land cover conversion tables, fig.width=6}
 dat %>%
   dplyr::select(development_change:otherUndeveloped08,developed08) %>%
   gather(Land_Cover_Type, Value, -development_change, -geometry) %>%
@@ -827,8 +846,7 @@ dat %>%
     mutate(Conversion_Rate = paste0(round(100 * n/sum(n), 2), "%")) %>%
     filter(development_change == 1) %>%
   dplyr::select(Land_Cover_Type,Conversion_Rate) %>%
-  reactable()
-
+  reactable(theme = reactableTheme(style = list(fontFamily = "Arial, sans-serif", fontSize = "0.875rem")))
 ```
 
 ## ID areas of land use change period 1 -\> period 2
@@ -880,7 +898,7 @@ map_dfc(modelList, function(x)pR2(get(x)))[4,] %>%
   setNames(paste0("Model",1:6)) %>%
   gather(Model,McFadden) %>%
   ggplot(aes(Model,McFadden)) +
-    geom_bar(stat="identity") +
+    geom_bar(stat="identity", fill = highlight) +
     labs(title= "McFadden R-Squared by Model") +
     plotTheme
 
@@ -892,7 +910,7 @@ testSetProbs <-
              probs = predict(Model6, datTest, type="response")) 
   
 ggplot(testSetProbs, aes(probs)) +
-  geom_density(aes(fill=class), alpha=0.5) +
+  geom_density(aes(fill=class), alpha=0.75) +
   scale_fill_manual(values = palette2,
                     labels=c("No Change","New Development")) +
   labs(title = "Histogram of test set predicted probabilities",
@@ -903,7 +921,7 @@ ggplot(testSetProbs, aes(probs)) +
 
 # Accuracy
 
-```{r testing model sensitivity: true/false positives/negatives}
+```{r testing model sensitivity}
 options(yardstick.event_first = FALSE)
 
 testSetProbs <- 
@@ -918,7 +936,7 @@ testSetProbs %>%
   summarize(Sensitivity = round(yardstick::sens_vec(class,factor(Value)),2),
             Specificity = round(yardstick::spec_vec(class,factor(Value)),2),
             Accuracy = round(yardstick::accuracy_vec(class,factor(Value)),2)) %>% 
-  reactable()
+  reactable(theme = reactableTheme(style = list(fontFamily = "Arial, sans-serif", fontSize = "0.875rem")))
 
 ```
 
@@ -937,6 +955,14 @@ ggplot() +
   facet_wrap(~Variable) +
   scale_colour_manual(values = palette2, labels=c("No Change","New Development"),
                       name="") +
+  geom_sf(data=metro_counties,
+          color = "white",
+          fill = "transparent",
+          linewidth = .5) +
+  geom_sf(data=Atlanta_MSA,
+          color = "black",
+          fill = "transparent",
+          linewidth = .75) +
   labs(title="Development Predictions - Low Threshold") + 
   mapTheme +
   theme(legend.position = "bottom")
@@ -964,6 +990,14 @@ ggplot(data=ConfusionMatrix.metrics) +
   facet_wrap(~Variable) +
   scale_colour_manual(values = c(highlight, gray), labels=c("Correct","Incorrect"),
                        name="") +
+  geom_sf(data=metro_counties,
+          color = "white",
+          fill = "transparent",
+          linewidth = .5) +
+  geom_sf(data=Atlanta_MSA,
+          color = "black",
+          fill = "transparent",
+          linewidth = .75) +
   labs(title="Development Predictions - Low Threshold") +
   mapTheme +
   theme(legend.position = "bottom")
