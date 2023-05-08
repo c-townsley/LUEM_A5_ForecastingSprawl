@@ -145,7 +145,7 @@ aggregateRaster <- function(inputRasterList, AtlantaMSA_fishnet) {
 
 Welcome! In this interactive R-markdown memo, we will employ historical patterns of development and population trends in the Atlanta, Georgia metrotropolitan statistical area ("MSA") to predict future development scenarios. Specifically, we will explore the spatial relationships that exist among population growth and highway infrastructure with land development. Through these models, we will explore the relationships between each of these independent variables and  urban sprawl, our dependent variable. 
 
-Urban sprawl is a development scenario characterized by "leap frogging" development, a development scenario that disproportionately consumes land and environmental resources, with significant negative ecological externalities. These models will predict the extent of urban sprawl for the Atlanta metro area based on  two scenarios. The models presented here enable planners and policy makers to preemptively develop policies to calibrate against urban sprawl, empowering municipal governments to create successful and conscientious land allocation plans.
+Urban sprawl is a development scenario characterized by "leap frogging" development, a development scenario that disproportionately consumes land and environmental resources, with significant negative ecological externalities. These models will predict the extent of urban sprawl for the Atlanta metro area based on  two scenarios. The models presented here enable planners and policy makers to preemptively develop policies to calibrate against urban sprawl, empowering municipal governments to create conscientious land allocation plans.
 
 The model developed will predict two different scenarios: supply-side and demand-side. The supply-side model will predict how future development might occur following the construction of a new, theoretical highway. Through this scenario, we attempt to ascertain the relationship that highway development has with urban sprawl. In the demand-side model, we attempt to understand the relationship that population growth has with urban sprawl. We predict the demand for development according to population growth, and how this would spatially manifest based on existing land use trends. 
  
@@ -157,7 +157,6 @@ Projecting to 2029
 Data level: Census tract
 
 The following chunks of code will collect the prerequisite data needed for the model from the two years of study, structure the data in preparation for modeling, and run the model supply- and demand-side based on the study years' data to project for 2030. 
-
 
 # Data Gathering and Feature Engineering
 
@@ -250,7 +249,7 @@ lc_2008 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/56bd
 lc_2019 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/56bd35b343d39e88bd8e1fdc89957e6ccb804fe9/Data/raster/2019LC_proj.tif")
 ```
 
-The raster files were still very large, so here, we down sampled them to make their size more manageable and then clipped them precisely to the MSA boundaries.
+The raster files were still very large, so here, we down-sampled them to make their size more manageable and then clipped them precisely to the MSA boundary.
 
 ```{r downsample rasters crop and export, eval=FALSE}
 ## SKIP ##
@@ -322,7 +321,7 @@ ggplot() +
 )
 ```
 
-Viewing land cover at the MSA level in 2008 and 2019 shows that change is happening at too small a scale to discern visually alone. Hence, the powers of R. First, we will distill the many specific land cover classifications into six simple buckets: developed, forest, farmland, wetlands, water bodies, and other undeveloped lands.
+Viewing land cover at the MSA level in 2008 and 2019 shows that change is happening at too small a scale to discern visually at this extent. Hence, the powers of R. First, we will distill the many specific land cover classifications into six simple buckets: developed, forest, farmland, wetlands, water bodies, and other undeveloped lands.
 
 ### Land Cover by Type
 
@@ -357,7 +356,7 @@ names(otherUndeveloped19) <- "otherUndeveloped19"
 names(water19) <- "water19"
 ```
 
-This distilled, categorical dataset for each year is then aggregated to our fishnet of the Atlanta MSA. 
+This distilled, categorical dataset for each year is then aggregated to our fishnet of the Atlanta MSA. The resulting maps show that Atlanta is a heavily forested area. Development is vast, with its anchor in the center of the MSA, radiating outward. A significant amount of farmland exists in a thick band against the MSA's periphery. Undeveloped areas are scattered, mostly near the MSA's periphery.   
 
 ```{r turn rasters into fishnet dataframe, fig.width=8, fig.height=6}
 
@@ -403,10 +402,9 @@ rasters19_map <- aggregatedRasters19 %>%
 
 rasters19_map
 ```
-
-Mapping land cover by type in 2019 shows that most development is happening at the outer fringes of the MSA, but there are a notable number of undeveloped areas near the center.
-
 ### Land Cover Change
+
+To identify areas with land cover change, we use the raster datasets and reclassify the land cover types as numerical values, where developed lands have the value of 1 and undeveloped lands have the value of 0, for each of the years' datasets. We are then able to add these datasets together on a cell-by-cell basis to understand where development has occurred in 2019, where it was not in 2008. When added together, the cells with 1-values represent where new development has occurred; a value of 2 shows where development was in 2008 and remained in 2019, and 0 value shows land that was and remains undeveloped. This function is like using raster calculator in GIS.
 
 ```{r reclass matrix}
 #creat matrix for reclassifying land cover
@@ -439,13 +437,8 @@ development_change <- lc_2008r + lc_2019r
 
 hist(development_change)
 
-#make ggplot chart at some point, not working yet though
-#ggplot() +
- # geom_histogram(data=rast(development_change) %>% na.omit, 
-             # aes(x,y,fill=as.factor(value))) +
-  # labs(title="Development Land Cover Change") +
-  #plotTheme
 ```
+We can then visualize where the new development cells with the 1 value are. New development has been scattered throughout the MSA.
 
 ```{r plotting land cover change, fig.width=8}
 
@@ -472,6 +465,7 @@ ggplot() +
    theme(legend.position = "none")
   
 ```
+We then join this dataset, mapping new development, to our fishnet. 
 
 ```{r land cover development change, fig.width=8}
 dev_change <- reclassify(development_change, reclassMatrix)
@@ -514,7 +508,7 @@ ggplot() +
 
 ## Census Data: Population
 
-Download population data for 2009.
+Next, we set up our MSA population data, which will prepare us for the demand-side model. The next two chunks download the population data for 2009 and 2019 from the American Community Survey 5-year Estimates on a census tract level.
 
 ```{r metro pop 2009}
 # Look here for variable codes
@@ -529,8 +523,6 @@ Pop09 <-
   st_transform(st_crs(AtlantaMSA_fishnet))
 ```
 
-Download population data for 2019.
-
 ```{r metro pop 2019}
 #Pull 2019 population
 Pop19 <- 
@@ -541,6 +533,8 @@ Pop19 <-
   st_transform(st_crs(AtlantaMSA_fishnet)) %>% 
   st_buffer(-1) #buffer the the tracts by -1ft. This is done because tidycensus appears to return geometries that are problematic when subjected to the area weighted interpolation function
 ```
+
+We then visaulize the population for the two years by census tracts for the two years.
 
 ```{r plot both pop years, fig.width=10}
 grid.arrange(
@@ -566,8 +560,7 @@ ggplot() +
        subtitle="By Census Tract") +
   mapTheme, ncol=2)
 ```
-
-Reconcile tract boundaries and fishnet grid cells
+This chunk then reconciles the tract boundaries with the fishnet grid cells.
 
 ```{r reconcile tracts and fishnet cells}
 ### Breaking here on select(fishnetID)
@@ -603,7 +596,7 @@ fishnetPop <-
   mutate(pop_Change = pop19 - pop09)
 ```
 
-Compare population by tract vs pop by grid cell
+We can then compare population by tract vs population by grid cell.
 
 ```{r plot pop tract and grid cell, fig.width=10}
 grid.arrange(
@@ -632,7 +625,7 @@ ggplot() +
 
 ## Highway Distance
 
-Load in highway data.
+Next, we are going to prepare our supply-side model by loading in spatial data for Atlanta's existing highways.
 
 ```{r highway to geojson, include=FALSE, eval=FALSE}
 #Skip
@@ -661,7 +654,7 @@ ggplot() +
   mapTheme
 ```
 
-Calculate how far each fishnet cell is from a highway. Convert highway layer to raster then convert raster to points then mean distance from highway points is calculated by grid cell.
+We then calculate how far each fishnet cell is from a highway. We do this by converting the highway layer to raster, converting the raster to points, and then calculating the mean distance from highway for each grid cell.
 
 ```{r convert highways to raster}
 ##SKIP##
@@ -679,6 +672,8 @@ rast_dir = paste(dir_ct, 'raster', sep='/')
 
 #writeRaster(highway_raster, filename=file.path(rast_dir, "highway_raster.tif"), format="GTiff", overwrite=TRUE)
 ```
+
+This visualizes each cell's distance from a highway.
 
 ```{r dist from highways}
 #import highway raster
@@ -712,7 +707,7 @@ ggplot() +
 
 ## Calculating the Spatial Lag of Development
 
-We measure accessibility by way of a spatial lag hypothesizing that new development is a function of distance to existing development. The shorter the distance, the more accessible a grid cell is to existing development. We measure this by calculating the average distance from each grid cell to its 2 nearest developed neighboring grid cells in 2009.
+We measure accessibility by way of a spatial lag, hypothesizing that new development is a function of distance to existing development. The shorter the distance, the more accessible a grid cell is to existing development. We measure this by calculating the average distance from each grid cell to its 2 nearest developed neighboring grid cells in 2009.
 
 ```{r nn function}
 nn_function <- function(measureFrom,measureTo,k) {
@@ -761,7 +756,7 @@ ggplot() +
 
 # Create Final Dataset
 
-name it 'dat'.
+We then aggregate all this data to a final fishnet which we will feed into our model. This fishnet includes columns which indicate, cell-by-cell, if there has been development change, its land use, the cell's distance to highways, and its population in both years.
 
 ```{r combine all variables into one dataset}
 dat <-  
@@ -774,16 +769,16 @@ dat <-
   filter(water08 == 0) 
 ```
 
-<br>
-
 # Data Exploration
+
+This plot displays distance to highways and the spatial lag of development as continuous variables. This shows us that new development has on average, farther from highways, and from existing development in aggregate, than cells that had no change in land cover.
 
 ```{r plotting the averages (means) of infrastructure/development}
 
 dat %>%
-  dplyr::select(distance_highways,lagDevelopment08,development_change) %>% # development_change instead of lc_change?
+  dplyr::select(distance_highways,lagDevelopment08,development_change) %>% 
   gather(Variable, Value, -development_change, -geometry) %>%
-  ggplot(., aes(development_change, Value, fill=development_change)) + # development_change instead of lc_change (x2)?
+  ggplot(., aes(development_change, Value, fill=development_change)) + 
     geom_bar(position = "dodge", stat = "summary", fun.y = "mean") +
     facet_wrap(~Variable) +
     scale_fill_manual(values = palette2,
@@ -794,9 +789,10 @@ dat %>%
 
 ```
 
+This next plot shows that new development has occurred in cells where the population is greater.  
+
 ```{r bar plots of population variables}
 
-# development_change instead of lc_change?
 dat %>%
   dplyr::select(pop09,pop19,pop_Change,development_change) %>%
   gather(Variable, Value, -development_change, -geometry) %>%
@@ -811,9 +807,9 @@ dat %>%
 
 ```
 
+From this conversion table, we see that forested areas in 2008 were the most likely to have been developed by 2019, at 8.85% likelihood of development. This shows that Atlanta has a preference for developing woodlands first, with areas adjacent to those that are already developed as a close second. 
+
 ```{r land cover conversion tables, fig.width=10}
-# From this conversion table, we see that forested areas in 2008 were the most likely to be developed in 2019, at 8.85% liklihood of development...
-## Although I am kind of confused as to why developed08 is the second largest. I think this is because this is based on the two adjacent cells, showing that development was 8.25% likely adjacent to two cells that were developed, second onlt to forested areas. If true, this shows that Atlanta has a preference for developing woodlands first, with areas adjacent to those that are already developed as a close second. 
 
 dat %>%
   dplyr::select(development_change:otherUndeveloped08,developed08) %>%
@@ -826,11 +822,12 @@ dat %>%
     filter(development_change == 1) %>%
   dplyr::select(Land_Cover_Type,Conversion_Rate) %>%
   reactable()
+
 ```
 
 ## ID areas of land use change period 1 -\> period 2
 
-<br>
+
 
 # Model Building: Binary Logistic Regression - Predicting for 2019
 
