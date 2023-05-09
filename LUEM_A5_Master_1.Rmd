@@ -910,13 +910,13 @@ Model2 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeve
 Model3 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop09, 
               family="binomial"(link="logit"), data = datTrain)          
               
-Model4 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop09, 
+Model4 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop09 + pop19, 
               family="binomial"(link="logit"), data = datTrain)              
             
-Model5 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop09 + pop_Change,
+Model5 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop09 + pop19 + pop_Change,
               family="binomial"(link="logit"), data = datTrain)              
               
-Model6 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop_Change + pop09 + distance_highways, 
+Model6 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop_Change + pop09 + pop19 + distance_highways, 
               family="binomial"(link="logit"), data = datTrain) 
 
 
@@ -1254,7 +1254,7 @@ ggplot() +
 
 We then use Model 6 to predict how adding a highway might affect development patterns in 2029, based on scenario 1. While this model does not show a true supply-side only effect, it is useful because it allows us to directly compare how adding in a supply-side factor affects the model's demand-side only predictions.
 
-```{r predict with new highway, fig.width=12, fig.height=10}
+```{r predict with new highway, fig.width=8, fig.height=12}
 dat_highway <-
   dat_infill %>%
   dplyr::select(-distance_highways) %>% 
@@ -1278,7 +1278,7 @@ dat_highway %>%
        subtitle = "Based on projected development response to a new highway") +
   mapTheme
 
-grid.arrange(ncol=2,
+grid.arrange(ncol=1,
              map_pred29,
              Map_highway_pred
              )
@@ -1601,7 +1601,16 @@ Furthermore, the map shows that the remaining cells are all near wetland areas o
 
 # Conclusion
 
-Thank you for walking through our model. What we take away from this is....
+Thank you for walking through our model. We conclude by summarizing the strengths, weaknesses, and planning implications of this approach.
+
+**Strengths of approach**  
+While not perfect, the strengths of this approach are that it allows us to estimate future urban sprawl based on land cover and population characteristics of a given area. Being able to visually analyze development potential through maps and charts has great utility for communicating the complex nature of urban sprawl to everyone from policymakers to community members with non-technical backgrounds.
+
+**Weaknesses**  
+While an incredibly useful tool, because this approach only takes inputs from two study years, it has the potential to predict future development based on a small historical sample and anomalous trends. Furthermore, while the maps and charts are helpful for communication, they are estimations at best, and only one piece of the land allocation toolkit. The convincing nature of these graphics risks communicating these estimates as fact. Finally, the model is only as good as the variables within it. In future studies, we could improve our model by testing additional predictor variables such as school districts, demographic information, and real estate values.
+
+**Policy implications**  
+Based on the results of our analysis, the 21 county Atlanta metro region would benefit from conservation easements to prevent further landscape fragmentation. This would protect the vitality of forest ecosystems over the long-term. To calibrate against further landscape fragmentation, this analysis suggests that policymakers could implement an urban growth boundary in the fringe counties to protect the metro's remaining sensitive regions before they are fully developed. This would have the added benefit of encouraging infill development in the MSA.
 
 ```{r export charts, include = FALSE, eval = FALSE}
 dir_ct_graphics <- "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/Graphics"
