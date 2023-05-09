@@ -2,7 +2,15 @@
 title: "LUEM A5 - Forecasting Sprawl"
 author: "Lindsey Hover & Charlie Townsley"
 date: "`r Sys.Date()`"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    theme: flatly
+    highlight: breezedark
+    code_folding: hide
+    code_download: true
 ---
 
 ```{r setup, include=FALSE}
@@ -145,13 +153,13 @@ aggregateRaster <- function(inputRasterList, AtlantaMSA_fishnet) {
 
 # Introduction: This Model and Its Significance to Planners
 
-Welcome! In this interactive R-markdown memo, we will employ historical patterns of development and population trends in the Atlanta, Georgia metropolitan statistical area ("MSA") to predict future development scenarios. Specifically, we will explore the spatial relationships that exist among population growth and highway infrastructure with land development. Through these models, we will explore the relationships between each of these independent variables and urban sprawl, our dependent variable.
+Welcome! In this interactive R-markdown memo, we employ historical patterns of development and population trends in the Atlanta, Georgia metropolitan statistical area ("MSA") to predict future development scenarios. Specifically, we examine the spatial relationships that exist among population growth and highway infrastructure with land development. Through these models, we explore the relationships between each of these independent variables and urban sprawl, our dependent variable.
 
-Urban sprawl is a development scenario characterized by "leap frogging" development, a development scenario that disproportionately consumes land and environmental resources, with significant negative ecological externalities. These models will predict the extent of urban sprawl for the Atlanta metro area based on two scenarios. The models presented here enable planners and policy makers to preemptively develop policies to calibrate against urban sprawl, empowering municipal governments to create conscientious land allocation plans.
+Urban sprawl is a development scenario characterized by "leap frogging" development, a development scenario that disproportionately consumes land and environmental resources, with significant negative ecological externalities. These models will predict likely urban sprawl for the Atlanta metro area based on two scenarios. The models presented here enable planners and policy makers to preemptively develop policies to calibrate against urban sprawl, empowering municipal governments to create conscientious land allocation plans.
 
 The model developed will predict two different scenarios: demand-side and supply-side. In the demand-side model, we attempt to understand the relationship that population growth has with urban sprawl in the MSA. Specifically, we predict the demand for development according to population growth, and how this would spatially manifest based on existing land use trends and population projections. The supply-side model will predict how future development might occur following the construction of a new, theoretical highway, supplying infrastructure. Through this scenario, we attempt to ascertain the relationship that highway development has with urban sprawl.
 
-Let's explore how sprawl can occur, unmitigated, based on these independent variables. We will use land cover and population data from the years 2008 and 2019 to predict for the year 2030.
+Let's explore how sprawl can occur, unmitigated, based on these independent variables. We use land cover and population data from the years 2008/2009 and 2019 to predict for the year 2029.
 
 -   Region of interest: Atlanta, GA metro
 
@@ -159,13 +167,13 @@ Let's explore how sprawl can occur, unmitigated, based on these independent vari
 
 -   Projecting to 2029
 
--   Data level: Census tract
+-   Data level: fishnet grid cell
 
-The following chunks of code will collect the prerequisite data needed for the model from the two years of study, structure the data in preparation for modeling, and run the model demand- and supply-side models based on the study years' data to project for the year 2030.
+The following chunks of code will collect the prerequisite data needed for the model from the two years of study, structure the data in preparation for modeling, and run the demand - and supply- side models based on the study years' data to project for the year 2030.
 
 # Data Gathering and Feature Engineering
 
-These code chunks pull in and visualize our spatial datasets of the Atlanta MSA's 21 counties.
+First, we pull in and visualize our spatial datasets of the Atlanta MSA's 21 counties.
 
 ```{r creating GeoJSON from Shapefile, include=FALSE, eval=FALSE}
 #SHP1 <- st_read("C:/Users/Lindsey/Desktop/CPLN675_Land_Use_Modeling_Desktop/Final/LUEM_A5_Repo/Shapefiles/SHP1.shp")
@@ -179,9 +187,9 @@ These code chunks pull in and visualize our spatial datasets of the Atlanta MSA'
 
 ```
 
-This chunk retrieves the Atlanta MSA boundary using the `tigris` package.
+And retrieve the Atlanta MSA boundary using the `tigris` package.
 
-```{r Atlanta MSA shapefile}
+```{r Atlanta MSA shapefile, results='hide'}
 #List of the Atlanta region MPOs 21 counties
 Counties <- c("Barrow", "Bartow", "Carroll", "Cherokee", 
               "Clayton", "Cobb", "Coweta", "Dawson", 
@@ -197,7 +205,9 @@ metro_counties <- counties(state = "GA", cb = TRUE, resolution = "500k", year = 
 #Merge counties into one shapefile showing just the boundary
 Atlanta_MSA <- st_union(metro_counties) %>% 
   st_transform("ESRI:102267")
+```
 
+```{r plot msa}
 #plot MSA boundary to make sure its right
 ggplot() + 
   geom_sf(data = metro_counties) +
@@ -206,6 +216,7 @@ ggplot() +
   mapTheme + 
   labs(title = "Atlanta 21 County MSA")
 ```
+
 
 ```{r msa conversion, include=FALSE, eval=FALSE}
 ## SKIP ##
@@ -219,7 +230,7 @@ ggplot() +
 #st_write(metro_counties, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/shapefile/Atlanta_Metro_Boundary_21county/AtlantaMSA_Boundary_21counties.shp")
 ```
 
-Now, this section creates a fishnet of the Atlanta MSA using 1000'x1000' cells. A fishnet is a vector dataset that will allow us to attach other information to the forthcoming raster dataset on land cover.
+We then create a fishnet of the Atlanta MSA using 1000' x 1000' cells. A fishnet is a vector data set that will allow us to attach other information to the forthcoming raster data set on land cover.
 
 ```{r fishnet}
 AtlantaMSA_fishnet <- 
@@ -244,7 +255,7 @@ ggplot()+
 
 ### Land Cover by Year and Type
 
-These chunks retrieve the raster files of land cover for the Atlanta MSA. These datasets were downloaded as a national dataset from the Multi-Resolution Land Characteristics Consortium's National Land Cover Database, and clipped in GIS to a rectangular boundary extent that aligned with the farthest points of the Atlanta region's 21 county border.
+We retrieve the raster files of land cover for the Atlanta MSA. We downloaded these datasets from the Multi-Resolution Land Characteristics Consortium's National Land Cover Database, and clipped them in ArcGIS to a rectangular boundary extent that aligned with the farthest points of the Atlanta region's 21 county border.
 
 ```{r Import full original Land Cover data, eval=FALSE}
 ##SKIP##
@@ -254,7 +265,7 @@ lc_2008 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/56bd
 lc_2019 = raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/56bd35b343d39e88bd8e1fdc89957e6ccb804fe9/Data/raster/2019LC_proj.tif")
 ```
 
-The raster files were still very large, so here, we down-sampled them to make their size more manageable and then clipped them precisely to the MSA boundary.
+The raster files were still very large, so we down-sampled them to make their size more manageable and then clipped them precisely to the MSA boundary.
 
 ```{r downsample rasters crop and export, eval=FALSE}
 ## SKIP ##
@@ -283,7 +294,7 @@ lc_2008 <- raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/24f
 lc_2019 <- raster("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/24f08e61c5ec983b3fa39f1f3b03fb90aa3a13ee/Data/raster/lc2019_sml.tif") 
 ```
 
-We can then visualize Atlanta's land cover in 2008 and 2019.
+This allows us to visualize Atlanta's land cover in 2008 and 2019.
 
 ```{r Plot land cover for 2008 and 2019, fig.height=10, fig.width=8}
 grid.arrange(ncol = 1,
@@ -326,7 +337,7 @@ ggplot() +
 )
 ```
 
-Viewing land cover at the MSA level in 2008 and 2019 shows that change is happening at too small a scale to discern visually at this extent. Hence, the powers of R. First, we will distill the many specific land cover classifications into six simple buckets: developed land, forest, farmland, wetlands, water bodies, and other undeveloped lands.
+Viewing land cover at the MSA level in 2008 and 2019 shows that change is happening at too small a scale to discern visually at this extent. Therefore, we summon the powers of R. First, we distill the many specific land cover classifications into six simple buckets: developed land, forest, farmland, wetlands, water bodies, and other undeveloped lands.
 
 ### Land Cover by Type
 
@@ -362,7 +373,7 @@ names(water19) <- "water19"
 
 This distilled, categorical dataset for each year is then aggregated to our fishnet of the Atlanta MSA. The resulting maps show that Atlanta is a heavily forested area. Development is vast, with its anchor in the center of the MSA, radiating outward. A significant amount of farmland exists in a thick band against the MSA's periphery. Undeveloped areas are scattered, also mostly near the MSA's periphery.
 
-```{r turn rasters into fishnet dataframe, fig.width=8, fig.height=6}
+```{r turn rasters into fishnet dataframe, fig.width=12, fig.height=10}
 
 theRasterList08 <- c(developed08, forest08, farm08, wetlands08, otherUndeveloped08, water08)
 
@@ -409,9 +420,9 @@ rasters08_map
 
 ### Land Cover Change
 
-To identify areas with land cover change, we use the raster datasets and reclassify the land cover types as numerical values, where developed lands have the value of 1 and undeveloped lands have the value of 0, for each of the years' datasets. We are then able to add these datasets together on a cell-by-cell basis to understand where development has occurred in 2019, where it was not in 2008. When added together, the cells with 1-values represent where new development has occurred; a value of 2 shows where development was in 2008 and remained in 2019, and 0 value shows land that was and remains undeveloped. This function is like using raster calculator in GIS.
+To identify areas with land cover change, we use the raster data sets and reclassify the land cover types as numerical values, where developed lands have the value of 1 and undeveloped lands have the value of 0, for each of the years' data sets. We are then able to add these data sets together on a cell-by-cell basis to understand where development has occurred in 2019 and where it was not in 2008. When added together, the cells with values of 1 represent where new development has occurred; a value of 2 shows where development was in 2008 and remained in 2019, and a value of 0 shows land that was and remains undeveloped. This function is like using raster calculator in GIS.
 
-```{r reclass matrix}
+```{r reclass matrix, results='hide'}
 #creat matrix for reclassifying land cover
 reclassMatrix <- 
   matrix(c(
@@ -452,7 +463,7 @@ ggplot(data.frame(value = dev_change_vec), aes(x=value)) +
   plotTheme
 ```
 
-We can then visualize where the new development cells with the 1 value are. New development has been scattered throughout the MSA.
+This shows us that most cells in the MSA remained undeveloped from 2008 to 2019, many of them were already developed, and a few of the previously undeveloped cells converted to developed. We can then visualize where the new development cells with the 1 value are, which shows that new development has been scattered throughout the MSA.
 
 ```{r plotting land cover change, fig.width=8}
 
@@ -480,7 +491,7 @@ ggplot() +
   
 ```
 
-We then join this dataset, mapping new development, to our fishnet., which magnifies where the development change has happened a bit.
+We then join this dataset, mapping new development, to our fishnet. This has the effect of magnifying where the development change has happened a bit.
 
 ```{r land cover development change, fig.width=8}
 dev_change <- reclassify(development_change, reclassMatrix)
@@ -525,7 +536,7 @@ ggplot() +
 
 Next, we set up our MSA population data, which will prepare us for the demand-side model. The next two chunks download the population data for 2009 and 2019 from the American Community Survey 5-year Estimates on a census tract level.
 
-```{r metro pop 2009}
+```{r metro pop 2009, echo=FALSE, results='hide'}
 # Look here for variable codes
 acs_vars <- load_variables(2009, "acs5")
 
@@ -538,7 +549,7 @@ Pop09 <-
   st_transform(st_crs(AtlantaMSA_fishnet))
 ```
 
-```{r metro pop 2019}
+```{r metro pop 2019, echo=FALSE, results='hide'}
 #Pull 2019 population
 Pop19 <- 
   get_acs(geography = "tract", variables = "B01003_001", year = 2019,
@@ -551,7 +562,7 @@ Pop19 <-
 
 We then visualize the population for the two years by the respective census tract boundaries for each of the years.
 
-```{r plot both pop years, fig.width=10}
+```{r plot both pop years, fig.width=12}
 grid.arrange(
 ggplot() +
   geom_sf(data = Pop09, aes(fill=factor(ntile(pop09,5))), colour=NA) +
@@ -576,7 +587,7 @@ ggplot() +
   mapTheme, ncol=2)
 ```
 
-This chunk then reconciles the tract boundaries with the fishnet grid cells.
+We then reconcile the tract boundaries with the fishnet grid cells to be able to conduct analysis and build models with our fishnet data set.
 
 ```{r reconcile tracts and fishnet cells}
 ### Breaking here on select(fishnetID)
@@ -614,7 +625,7 @@ fishnetPop <-
 
 We can then compare population by tract vs population by grid cell.
 
-```{r plot pop tract and grid cell, fig.width=10}
+```{r plot pop tract and grid cell, fig.width=12}
 grid.arrange(
 ggplot() +
   geom_sf(data=Pop19, aes(fill=factor(ntile(pop19,5))),colour=NA) +
@@ -641,7 +652,7 @@ ggplot() +
 
 ## Highway Distance
 
-Next, we are going to prepare our supply-side model by loading in spatial data for Atlanta's existing highways.
+Next, we prepare our supply-side model by loading in spatial data for Atlanta's existing highways.
 
 ```{r highway to geojson, include=FALSE, eval=FALSE}
 #Skip
@@ -650,7 +661,7 @@ Next, we are going to prepare our supply-side model by loading in spatial data f
 #st_write(metro_highways, append = FALSE, "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/LUEM_A5_Repo/Data/geojson/Major_Roads.geojson")
 ```
 
-```{r highways, fig.width=8}
+```{r highways, fig.width=8, echo=FALSE, message=FALSE}
 AtlantaHighways <-
   st_read("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/8b689651286bb4ff28554095bd39ce1bd87655e4/Data/geojson/Major_Roads.geojson") %>%
   st_transform(st_crs(metro_counties)) %>%
@@ -673,9 +684,10 @@ ggplot() +
   mapTheme
 ```
 
-We then calculate how far each fishnet cell is from a highway. We do this by converting the highway layer to raster, converting the raster to points, and then calculating the mean distance from a highway for each grid cell.
+This suggests there may be an association between proximity to highways and new development. To better understand this relationship, we calculate how far each fishnet cell is from a highway. We do this by converting the highway layer to raster, converting the raster to points, and then calculating the mean distance from a highway for each grid cell.
 
 ```{r convert highways to raster, eval=FALSE}
+#SKIP#
 #create a raster layer of highways
 highway_raster <- 
   as(AtlantaHighways,'Spatial') %>%
@@ -690,7 +702,7 @@ rast_dir = paste(dir_ct, 'raster', sep='/')
 
 This visualizes each cell's distance from a highway.
 
-```{r dist from highways}
+```{r dist from highways, echo=FALSE, fig.width=8}
 #import highway raster
 highway_raster <- raster(paste(dir_git, "a5a5b0c9099b97f68c0d1aeadcdfe9dbd2960a9a/Data/raster/highway_raster.tif", sep='/'))
 
@@ -718,6 +730,10 @@ ggplot() +
                       labels=substr(quintileBreaks(highwayPoints_fishnet,"distance_highways"),1,8),
                       name="Quintile\nBreaks") +
   geom_sf(data=AtlantaHighways, colour = "black") +
+  geom_sf(data=Atlanta_MSA,
+          color = "black",
+          fill = "transparent",
+          linewidth = .75) +
   labs(title = "Distance to Highways",
        subtitle = "In Feet; Highways visualized in black") +
   mapTheme
@@ -782,9 +798,11 @@ ggplot() +
   mapTheme
 ```
 
-# Create Final Dataset
+This shows most of the area in the MSA's inner counties was near existing development in 2008. It was only the counties at the outer fringes that still had a few areas relatively distant from development.
 
-We then aggregate all this data to a final fishnet which we will feed into our model. This fishnet includes columns which indicate, cell-by-cell, if there has been development change, its land use, the cell's distance to highways, the cell's distance to existing development, and its population in both years.
+## Create Final Dataset
+
+We then aggregate all these data to a final fishnet data set for feeding into our model. This fishnet includes columns which indicate, cell-by-cell, if there has been development change, land use type, the cell's distance to highways, the cell's distance to existing development, and its population in both years.
 
 ```{r combine all variables into one dataset}
 dat <-  
@@ -799,7 +817,7 @@ dat <-
 
 # Data Exploration
 
-Here, we explore how each factor uncovered thus far is related to new development. This plot displays distance to highways and the spatial lag of development as continuous variables. This shows us that new development has been, on average, farther from highways, and from existing development in aggregate, than cells that had no change in land cover.
+Now that all of our data are assembled, we explore how each factor uncovered thus far is related to new development. This plot displays distance to highways and the spatial lag of development as continuous variables. This shows us that new development has been, on average, closer to highways, and closer to existing development in aggregate, than cells that had no change in land cover. This supports our previous hypothesis that new development might be occurring closer to highways and to previously developed areas.
 
 ```{r plotting the averages (means) of infrastructure/development}
 
@@ -813,11 +831,11 @@ dat %>%
                       labels=c("No Change","New Development"),
                       name="") +
     labs(title="New Development as a Function of the Continuous Variables") +
-    plotTheme 
+    plotTheme
 
 ```
 
-However, this next plot shows that new development has, on average, occurred in cells where the population is greater. From this, we learn that development in Atlanta MSA is more correlated to population than to proximity to existing highways or existing development.
+This next plot shows that new development has, on average, occurred in cells where the population is greater or growing. From this, we learn that development in Atlanta MSA is also positively correlated with the amount of population and population growth in an area.
 
 ```{r bar plots of population variables}
 
@@ -835,9 +853,11 @@ dat %>%
 
 ```
 
-From this conversion table, we see that forested areas in 2008 were the most likely to have been developed by 2019. This shows that Atlanta has a preference for developing woodlands first, with areas adjacent to those that are already developed as a close second.
+From the above data exploration, we can see that development is positively correlated with proximity to highways and development, as well as with existing and growing population. However, this leaves us wondering which types of land cover are most likely to convert to developed land?
 
-```{r land cover conversion tables, fig.width=6}
+The conversion table shows us that forested areas in 2008 were the most likely to have been developed by 2019. This shows that Atlanta has a preference for developing woodlands first, with areas adjacent to those that are already developed as a close second.
+
+```{r land cover conversion tables, fig.width=6, fig.height=6}
 dat %>%
   dplyr::select(development_change:otherUndeveloped08,developed08) %>%
   gather(Land_Cover_Type, Value, -development_change, -geometry) %>%
@@ -848,18 +868,24 @@ dat %>%
     mutate(Conversion_Rate = paste0(round(100 * n/sum(n), 2), "%")) %>%
     filter(development_change == 1) %>%
   dplyr::select(Land_Cover_Type,Conversion_Rate) %>%
-  reactable(theme = reactableTheme(style = list(fontFamily = "Arial, sans-serif", fontSize = "0.875rem")))
+  reactable(theme = reactableTheme(style = list(fontFamily = "Arial, sans-serif", fontSize = "1.0rem")))
 ```
 
-# Model Building: Binary Logistic Regression - Predicting for 2019
+<br>
 
-This section uses data from our first time period to create a model to predict land use change. We will create six logistic regression models to predict development change between 2008 and 2019.
+# Binary Logistic Regression - Predicting for 2019
 
-The first step is splitting the data in half and creating two test/training sets.
+Now that we have gathered a number of factors we hypothesized to be related to new development, and have proved that they have at least some association with development, we can build and train a model to predict new development based on them.
 
-# Model Building
+We chose to use binomial logistic regression for this assignment because it is a type of statistical model that is well suited to analyzing relationships between a binary response variable and one or more predictor variables. It estimates the probability of the response variable taking one of two possible values (in this case developed or not developed) based on the values of the predictor variables.
 
-```{r training sets}
+To predict the likelihood of future development, we use data from 2008/2009 to create a series of logistic regression models to predict land use change in 2019. We then evaluate the performance of these models to select our best model for predicting development in 2029.
+
+## Model Building
+
+The first step of this process is randomly splitting the data in half to create a testing data set with one half and a training data set with the other.
+
+```{r training sets, results='hide'}
 set.seed(3456)
 trainIndex <- 
   createDataPartition(dat$developed08, p = .50,
@@ -868,11 +894,11 @@ trainIndex <-
 datTrain <- dat[ trainIndex,]
 datTest  <- dat[-trainIndex,]
 
-nrow(dat)
-
 ```
 
-These are the six linear models created. They are numbered to reflect increasing complexity. While Model 1 concentrates exclusively on land cover type and whether development change occurred between the two time periods, later models incorporate the spatial lag of development, population elements, and our distance variables.
+We then build a series of binary logistic regression models based on our independent variables.
+
+The six models we created are numbered to reflect increasing complexity. While Model 1 concentrates exclusively on land cover type and whether development change occurred between the two time periods, later models incorporate the spatial lag of development, population elements, and our distance variables.
 
 ```{r linear models and plotting their R sqaured values and test set histogram plot}
 Model1 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08, 
@@ -884,18 +910,18 @@ Model2 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeve
 Model3 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop09, 
               family="binomial"(link="logit"), data = datTrain)          
               
-Model4 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop09 + 
-              pop19, 
+Model4 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop09, 
               family="binomial"(link="logit"), data = datTrain)              
             
-Model5 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop_Change,
+Model5 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop09 + pop_Change,
               family="binomial"(link="logit"), data = datTrain)              
               
-Model6 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop_Change +               distance_highways, 
+Model6 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop_Change + pop09 + distance_highways, 
               family="binomial"(link="logit"), data = datTrain) 
 
 
 modelList <- paste0("Model", 1:6)
+
 map_dfc(modelList, function(x)pR2(get(x)))[4,] %>%
   setNames(paste0("Model",1:6)) %>%
   gather(Model,McFadden) %>%
@@ -906,13 +932,16 @@ map_dfc(modelList, function(x)pR2(get(x)))[4,] %>%
 
 ```
 
-Now, we use the predicted values from Model 6 to create a histogram of the model's test set predicted probabilities. This shows us that a high density of cells have roughly a 40% likelihood of development.
+We then examine the McFadden R-Squared of the six models to select our best final model. Model 1 clearly performs more poorly than the others. However, models 2-4 also perform moderately less well than the remaining models. Therefore, we eliminate models 1-4 and choose Model 6 as our final model because it performs the best and allows us to explore the effects of all of our variables of interest.
+
+We then use the predicted values from Model 6 to create a histogram of the model's test set predicted probabilities. This shows us that a high density of cells have roughly a 40% likelihood of development. This makes sense given the sprawling nature of the Atlanta MSA's existing development patterns, which are acreage intensive. It also makes sense given the map of new development we plotted earlier, in which it seems feasible that roughly /~30-40% of the MSA was covered by new development in 2019.
 
 ```{r Density plot of probabilities observed by class}
 testSetProbs <- 
   data.frame(class = datTest$development_change,
              probs = predict(Model6, datTest, type="response")) 
-  
+
+chart_testProbs <-  
 ggplot(testSetProbs, aes(probs)) +
   geom_density(aes(fill=class), alpha=0.75) +
   scale_fill_manual(values = palette2,
@@ -921,20 +950,21 @@ ggplot(testSetProbs, aes(probs)) +
        x="Predicted Probabilities",y="Density") +
   plotTheme
 
+chart_testProbs
 ```
 
-# Accuracy
+## Accuracy
 
 This next segment tests our model's:
 
-1)  sensitivity: the extent to which it accurately predicts new development, or "true positives", and its
-2)  specificity, the extent to which it accurately predicts "true negatives."
+1)  Sensitivity: the extent to which it accurately predicts new development, or "true positives", and:
+2)  Specificity, the extent to which it accurately predicts "true negatives."
 
-Our ultimate goal with a land cover change model is to optimize to balance the model's predictions with regard to both sensitivity and specificity. Meaning, we want the model to be capable at predicting where development occurs so that we can plan for those areas, but we also want it to accurately predict where development would not occur, to inform our other land use planning.
+Our ultimate goal with a land cover change model is to optimize the balance between the model's predictions with regard to both sensitivity and specificity. Meaning, we want the model to be capable of predicting where development occurs so that we can plan for those areas, but we also want it to accurately predict where development would not occur, to inform our other land use planning.
 
-At the first two thresholds specified here, 5% and 17%, we can see that the 5% threshold very accurately predicts the "true negatives," where development does not occur. The threshold of 17%, however, performs better on the "true positive" rate of predicted v. actual development, that has occurred. We found that the best balance between the trade-offs of sensitivity and specificity was shown at a threshold of around 34%. We chose 34% because it gives us the highest overall accuracy, and allows us to keep both our sensitivity and specificity over 50%. 
+At the first two thresholds specified below, 5% and 17%, we can see that the 5% threshold very accurately predicts the "true negatives," where development does not occur. The threshold of 17%, however, performs better on the "true positive" rate of predicted v. actual development, that has occurred. We found, however, that a threshold of around 34% gives the best balance between the trade-offs of sensitivity and specificity. We chose 34% because it gives us the highest overall accuracy, and allows us to keep both our sensitivity and specificity over 50%.
 
-```{r testing model sensitivity}
+```{r testing model sensitivity, fig.height=6}
 options(yardstick.event_first = FALSE)
 
 testSetProbs <- 
@@ -950,13 +980,13 @@ testSetProbs %>%
   summarize(Sensitivity = round(yardstick::sens_vec(class,factor(Value)),2),
             Specificity = round(yardstick::spec_vec(class,factor(Value)),2),
             Accuracy = round(yardstick::accuracy_vec(class,factor(Value)),2)) %>% 
-  reactable(theme = reactableTheme(style = list(fontFamily = "Arial, sans-serif", fontSize = "0.875rem")))
+  reactable(theme = reactableTheme(style = list(fontFamily = "Arial, sans-serif", fontSize = "1.0rem")))
 
 ```
 
-These true/false positive/negative indicators are then converted to factors so that they can be mapped.
+We then convert these true/false positive/negative indicators to factors in order to map them.
 
-```{r development predictions based on thresholds, fig.width=12}
+```{r development predictions based on thresholds, fig.width=12, fig.height=10}
 predsForMap <-         
   dat %>%
     mutate(probs = predict(Model6, dat, type="response") ,
@@ -986,14 +1016,17 @@ ggplot() +
 
 ```
 
-Considering the trade-offs between accurately predicting false positives and false negatives, we can run our predictions through a confusion matrix to visualize the true positives ("TrueP") and true negatives ("TrueN") in the charts below, for each of the thresholds.
+These maps show that the 34% nicely captures the MSA's overall pattern of development while minimizing the tendency to over-predict development that the 17% and 5% thresholds share (the 5% threshold wildly so).
+
+To better understand the trade-offs between accurately predicting false positives and false negatives, we can run our predictions through a confusion matrix to visualize the true positives ("TrueP") and true negatives ("TrueN") in the charts below, for each of the thresholds.
 
 ```{r development predictions based on confusion metrics, fig.width=10, fig.height=10}
-
+dat <- dat %>% 
+  mutate(probs = predict(Model6, dat, type="response"))
+  
 ConfusionMatrix.metrics <-
   dat %>%
-    mutate(probs = predict(Model6, dat, type="response") ,
-           Threshold_5_Pct = as.factor(ifelse(probs >= 0.05 ,1,0)),
+    mutate(Threshold_5_Pct = as.factor(ifelse(probs >= 0.05 ,1,0)),
            Threshold_17_Pct =  as.factor(ifelse(probs >= 0.17 ,1,0)),
           Threshold_34_Pct =  as.factor(ifelse(probs >= 0.34 ,1,0))) %>%
     mutate(TrueP_05 = ifelse(development_change  == 1 & Threshold_5_Pct == 1, 1,0),
@@ -1010,8 +1043,9 @@ ggplot(data=ConfusionMatrix.metrics) +
   geom_point(aes(x=xyC(ConfusionMatrix.metrics)[,1], 
                  y=xyC(ConfusionMatrix.metrics)[,2], colour = as.factor(Value))) +
   facet_wrap(~Variable) +
-  scale_colour_manual(values = c(highlight, gray), labels=c("Correct","Incorrect"),
-                       name="") +
+  scale_colour_manual(values = c(gray, highlight),
+                      labels=c("Incorrect","Correct"),
+                      name="") +
   geom_sf(data=metro_counties,
           color = "white",
           fill = "transparent",
@@ -1026,13 +1060,17 @@ ggplot(data=ConfusionMatrix.metrics) +
 
 ```
 
-# Planning Scenarios (Projections)
+Mapping the sensitivity (true positives) and specificity (true negatives) of these thresholds shows in further detail that the 34% threshold predicts noticeably true negatives than the other thresholds while predicting only slightly less true positives. Therefore, we select 34% as the probability threshold at which to classify land as likely to be developed in the remainder of this project.
+
+# Planning Scenarios
+
+Now that we have developed a predictive model for new development, we can use it to test the effects of potential future scenarios. We first use the model to predict how a demand-side change (projected population) might affect development in 2029. We then use the model to predict how a supply-side change (a new highway) might affect development
 
 ## Scenario 1: Demand-side Change Forecast
 
-In this demand-side projection, we will use population projections for the Atlanta MSA counties and distribute the population among our fishnet cells. We do this according to growth and decline trends witnessed in the period between 2009 and 2019. The goal is to visualize change and thus plan for growth scenarios based on the anticipated future population.
+In this demand-side projection, we will use population projections for the Atlanta MSA counties and distribute the population among our fishnet cells. The goal is to visualize change and plan for growth scenarios based on how anticipated future population might drive development.
 
-Here, we replace the lag development 2008 column with the distance from development in 2019.
+First, we replace the lag development 2008 column with the distance from development in 2019.
 
 ```{r lag dev 2019}
 dat <-
@@ -1040,7 +1078,7 @@ dat <-
   mutate(lagDevelopment08 = nn_function(xyC(.), xyC(filter(., developed19 == 1)),2))
 ```
 
-Next, we look at projected population by county in 2029 based on population estimates from the [Georgia Data Analytics Center](https://gdac.georgia.gov/census) which is housed within the Governor's Office of Planning and Budget.
+Next, we look at projected population by county in 2029 based on population estimates from the [Georgia Data Analytics Center](https://gdac.georgia.gov/census).
 
 ```{r projected pop 2029}
 #County projections 2029
@@ -1091,7 +1129,9 @@ countyPopulation_2029 %>%
   plotTheme
 ```
 
-### Predicting Development Demand (based on projected pop)
+We see that Fulton, Gwinnett, DeKalb, and Cobb counties are projected to experience the largest population increases between 2019 and 2029.
+
+#### Predicting Development Demand (based on projected population)
 
 Now, we will take the county-level population projections and distribute them across the study area. We do this by weighting it proportionally according to a grid cell's 2019 population and then subtracting 2019 pop to get `pop_change`.
 
@@ -1108,6 +1148,7 @@ dat_infill <-
   #predict for 2029
     mutate(predict_2029.infill = predict(Model6,. , type="response"))
 
+map_pred29 <- 
 dat_infill %>%
   ggplot() +  
   geom_point(aes(x=xyC(dat_infill)[,1], y=xyC(dat_infill)[,2], colour = factor(ntile(predict_2029.infill,5)))) +
@@ -1115,17 +1156,24 @@ dat_infill %>%
                     labels=substr(quintileBreaks(dat_infill,"predict_2029.infill"),1,4),
                     name="% Likelihood\nof Development") +
   geom_sf(data=metro_counties, fill=NA, colour="white", size=.75) +
+  geom_sf(data = Atlanta_MSA, fill = "transparent",
+          color = "black", linewidth = .75) +
   labs(title= "Development Demand in 2029: Predicted Probabilities",
     subtitle = "Based on population change projections")+
   mapTheme
+
+map_pred29
 ```
+
+Mapping predicted development based on projected population change for 2029 doesn't show any huge changes from where our model predicted development would be in 2019. New development is still predicted to most likely occur in the outer counties. Although, our model is predicting increased development in the northwest and southwest corners of the metro which it was not predicting before we added in the 2029 population projections.
+
+<br>
 
 ## Scenario 2: Supply-side Change Forecast
 
-To begin our supply-side projection, we imagine a new highway in eastern Atlanta where development between 2008 and 2019 has not previously concentrated. This was also a forested area, so the fact that much development had not happened there over the earlier period aroused our curiosity. This way, we can test the extent that a new road investment influences development in on most desirable area of land cover. This new road was created as a line segment in GIS and merged with the existing highways shapefile.
+To begin our supply-side projection, we imagine a new highway in Walton County, in the eastern part of the metro, where development between 2008 and 2019 was less concentrated. This was also a forested area, so the fact that much development had not happened there over the earlier period aroused our curiosity. This way, we can test the extent that a new road investment influences development in a desirable area of land cover. This new road was created as a line segment in ArcGIS and merged with the existing highways shapefile.
 
-```{r import new roads files}
-
+```{r import new roads files, results='hide'}
 #NEW HIGHWAY SEGMENT ONLY
 new_highway <- st_read("https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/a5a5b0c9099b97f68c0d1aeadcdfe9dbd2960a9a/Data/geojson/new_highway.geojson")
 
@@ -1150,19 +1198,18 @@ ggplot() +
   scale_colour_manual(values = c(gray, "#ED7953FF"),
                       labels=c("No Change","New Development"),
                       name = "") +
-  labs(title = "Land Cover Development Change", subtitle = "Atlanta metro area | Fishnet centroids with existing highways\nin dark blue and a new highway in cyan") +
-  geom_sf(data=AtlantaHighways, color = highlight, linewidth = .5) +
+  labs(title = "Land Cover Development Change",
+       subtitle = "Atlanta metro area | Fishnet centroids with existing highways\nin dark blue and a new highway in cyan") +
+  geom_sf(data=metro_counties, fill=NA, colour="white", size=.75) +
   geom_sf(data = Atlanta_MSA, fill = "transparent",
           color = "black", linewidth = .75) +
+  geom_sf(data=AtlantaHighways, color = highlight, linewidth = .5) +
   geom_sf(data=new_highway, colour="cyan", linewidth=1) +
-    #scale_color_manual(values=c("Existing Highways" = "black","New Highway" = "cyan"))+
   mapTheme
-
-  #                  labels=c("Existing Highways", "New Highway"))
 
 ```
 
-Now, with the new highways dataset, we can create a new distance-to-highway raster, and from there attach the fishnet centroids to the fishnet. This can help us understand how far the fishnet cells are from the new highway.
+Now, with the new highways dataset, we can create a new distance-to-highway raster, and from there convert it to fishnet centroids which we merge with the fishnet. This helps us understand how far the fishnet cells are from the new highway.
 
 ```{r create highway distance raster with new highway segment }
 
@@ -1195,41 +1242,57 @@ ggplot() +
                       labels=substr(quintileBreaks(new_highwayPoints_fishnet,"distance_highways"),1,8),
                       name="Quintile\nBreaks") +
   geom_sf(data=highways_all, colour = "black") +
-   geom_sf(data=new_highway, colour="cyan", linewidth=.75) +
+  geom_sf(data=new_highway, colour="cyan", linewidth=.75) +
+  geom_sf(data=metro_counties, fill=NA, colour="white", size=.75) +
+  geom_sf(data = Atlanta_MSA, fill = "transparent",
+          color = "black", linewidth = .75) +
   labs(title = "Distance to Highways",
        subtitle = "As fishnet centroids; Existing highways visualized in black; new highway in cyan") +
   mapTheme
 
-
 ```
 
-We then run the dataset through Model 6 which is agnostic to population change, but responsive to land cover type, the spatial lag of development, and distance to highways. Because population is excluded, this model is effective in showing a true response to supply-side forces.
+We then use Model 6 to predict how adding a highway might affect development patterns in 2029, based on scenario 1. While this model does not show a true supply-side only effect, it is useful because it allows us to directly compare how adding in a supply-side factor affects the model's demand-side only predictions.
 
-```{r}
+```{r predict with new highway, fig.width=12, fig.height=10}
 dat_highway <-
-  dat %>%
-  #predict for 2029
-    mutate(predict_2029.distance_highways = predict(Model6,. , type="response"))
+  dat_infill %>%
+  dplyr::select(-distance_highways) %>% 
+  left_join(as.data.frame(new_highwayPoints_fishnet)) %>% 
+  mutate(predict_2029.distance_highways = predict(Model6,. , type="response"))
 
+
+Map_highway_pred <-
 dat_highway %>%
   ggplot() +  
   geom_point(aes(x=xyC(dat_highway)[,1], y=xyC(dat_highway)[,2], colour = factor(ntile(predict_2029.distance_highways,5)))) +
   scale_colour_manual(values = palette5,
                     labels=substr(quintileBreaks(dat_highway,"predict_2029.distance_highways"),1,4),
                     name="% Likelihood\nof Development") +
-    geom_sf(data=highways_all, colour = "black") +
-   geom_sf(data=new_highway, colour="cyan", linewidth=.75) +
+  geom_sf(data=metro_counties, fill=NA, colour="white", size=.75) +
+  geom_sf(data=highways_all, colour = "black") +
+  geom_sf(data=new_highway, colour="cyan", linewidth=.75) +
+  geom_sf(data = Atlanta_MSA, fill = "transparent",
+          color = "black", linewidth = .75) +
   labs(title= "Development Supply in 2029: Predicted Probabilities",
        subtitle = "Based on projected development response to a new highway") +
   mapTheme
 
+grid.arrange(ncol=2,
+             map_pred29,
+             Map_highway_pred
+             )
 ```
+
+While the change is slight, we see that adding in the new highway does slightly increase the predicted likelihood of development in the area around it.
 
 # Allocation
 
+Now that we better understand the effects of demand-side factors (like population growth and proximity to developed areas) and supply-side factors (like new infrastructure available land), we can analyze these factors by county. This allows us to better understand which counties in the Atlanta MSA are better suited to development than others. It also allows us to see which land use and development policies might be best suited to this region.
+
 Let's first orient ourselves to how each kind of land cover was distributed in 2019.
 
-```{r aggregate 2019 rasters, fig.width=10}
+```{r aggregate 2019 rasters, fig.width=10, fig.height=10}
 dat2 <-
   aggregateRaster(theRasterList19, dat) %>%
   dplyr::select(developed19, forest19, farm19, wetlands19, otherUndeveloped19, water19) %>%
@@ -1300,8 +1363,6 @@ Interestingly, we see that more sensitive areas were lost to development near th
 
 ## Landscape Fragmentation
 
-We then group areas where the `wetlands19` and `forest11` raster cells are contiguous to create a `sensitive_regions` layer containing all sensitive regions with an area greater than 1 acre.
-
 To contextualize these sensitive locations, we group areas where the `wetlands19` and `forest11` rasters are contiguous to create a `sensitive_regions` layer containing all sensitive regions with an area greater than 1 acre.
 
 ```{r sensitive regions, fig.width=8}
@@ -1338,7 +1399,7 @@ ggplot() +
   mapTheme
 ```
 
-This gives us a much more clear understanding of which areas might be most sensitive to development than the mapping each type of land cover separately did. We see that most of the counties along the outer border of the Atlanta metro region still have relatively low landscape fragmentation. This suggests that these counties should prioritize infill development over suburban sprawl.
+This gives us a much more clear understanding of which areas might be most sensitive to development than mapping each type of land cover separately did. We see that most of the counties along the outer border of the Atlanta metro region still have relatively low landscape fragmentation. This suggests that these counties should prioritize infill development over suburban sprawl.
 
 ## Summarize by County
 
@@ -1391,18 +1452,18 @@ county_specific_metrics %>%
     plotTheme + theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position="bottom")
 ```
 
-This chart shows three types of metrics:\
-\* Demand-side factors\
-\* Factors suitable for development, and\
-\* Factors not suitable for development
+This chart shows three types of metrics:  
+-   Demand-side factors  
+-   Factors suitable for development, and  
+-   Factors not suitable for development  
 
-The demand side factors are `Mean_Development_Demand` and `Population_Change_Rate`. `Mean_Development_Demand` is the mean value of predicted development demand for a given county in 2029. `Population_Change_Rate` is share of a county's population that is projected to move in between 2019 and 2029.
+The demand side factors are `Mean_Development_Demand` and `Population_Change_Rate`. `Mean_Development_Demand` is the mean value of predicted development demand for a given county in 2029. `Population_Change_Rate` is the share of a county's population that is projected to move-in between 2019 and 2029.
 
 Factors suitable for development are area of `Total_Farmland` and area of `Total_Undeveloped` land in a given county.
 
-Factors not suitable for development are area of `Sensitive_Regions`, `Sensitive_Land_Lost`, and `Total_Wetlands` in a county. 
+Factors not suitable for development are area of `Sensitive_Regions`, `Sensitive_Land_Lost`, and `Total_Wetlands` in a county.
 
-In determining our allocation criteria, we determined any area with a wetland was not suitable for development. Attending to the externalities of urban sprawl, we chose to preserve these vital ecosystems. When it comes to forests, however, given that Atlanta MSA has such extensive tree cover, we determined that forested areas are suitable for development.
+In determining our allocation criteria, we determined any area with a wetland was not suitable for development. Attending to the externalities of urban sprawl, we chose to preserve these vital ecosystems. When it comes to forests, however, given that the Atlanta MSA has such extensive tree cover, we determined that forested areas are suitable for development.
 
 Looking at the development suitability indicators across the 21 counties of Georgia's MSA, we see that all counties have a large percentage of forested land and therefore of sensitive regions. Looking at the rest of the indicators together however, we can see that some counties are better suited for development than others.
 
@@ -1410,7 +1471,9 @@ For example, we see that Hall County has both a high rate of development demand 
 
 The satellite image below of development in Hall County shows why there is a large amount of forested land cover across the Atlanta metro region. There seems to be a regional preference for dispersed development in forested land.
 
-![](paste(dir_ct,%20'Images/Satellite_HallCounty.png',%20sep='/'))
+![](https://raw.githubusercontent.com/c-townsley/LUEM_A5_Repo/ffa083e7e1a63b11e033f386ec7fe00b2d3414d3/Data/Images/Satellite_HallCounty.png)
+
+
 
 On the other hand, Clayton County appears to be poorly suited for development because it has relatively high development demand, is experiencing population growth, has a low amount of farmland and undeveloped land, and has a relatively high amount of wetlands.
 
@@ -1430,7 +1493,7 @@ ggplot() +
 
 First, we map supply and demand factors for Hall County, to examine an example of a county well suited to further development.
 
-```{r hall county, fig.width=12}
+```{r hall county, fig.width=12, fig.height=6}
 HallCounty <-
   dat2 %>%
     mutate(Development_Demand = predict(Model6, dat2, type="response")) %>%
@@ -1443,7 +1506,7 @@ HallCounty_landUse <- rbind(
   filter(HallCounty, developed19 == 1) %>%
   dplyr::select() %>% mutate(Land_Use = "Developed"))
 
-grid.arrange(
+Map_Hall1 <-
 ggplot() +
   geom_sf(data=HallCounty, aes(fill=factor(ntile(Development_Demand,5))), colour=NA) +
   geom_point(data=HallCounty_landUse, aes(x=xyC(HallCounty_landUse)[,1], 
@@ -1457,8 +1520,9 @@ ggplot() +
   labs(title = "Development Potential, 2029: Hall County",
        subtitle = "With Developed and Unsuitable Areas from 2019") +
   mapTheme +
-  guides(fill = guide_legend(order = 1), colour = guide_legend(order = 2)),
+  guides(fill = guide_legend(order = 1), colour = guide_legend(order = 2))
 
+Map_Hall2 <-
 ggplot() +
   geom_sf(data=HallCounty, aes(fill=factor(ntile(pop_Change,5))), colour=NA) +
   geom_point(data=HallCounty_landUse, aes(x=xyC(HallCounty_landUse)[,1], 
@@ -1472,16 +1536,21 @@ ggplot() +
   labs(title = "Projected Population, 2029: Hall County",
        subtitle = "With Developed and Unsuitable Areas from 2019") +
   mapTheme +
-  guides(fill = guide_legend(order = 1), colour = guide_legend(order = 2)), ncol=2)
+  guides(fill = guide_legend(order = 1), colour = guide_legend(order = 2))
+
+grid.arrange(
+  Map_Hall1,
+  Map_Hall2,
+  ncol=2)
 ```
 
-Mapping Hall County's development potential and projected population with developed land and wetlands (the "not suitable" land) we see that the County still has a significant amount of area that is suitable for development. In particular, this county would do well to prioritize infill development between highways in its northwest and southern portions where there is predicted to be both high development demand and significant population growth. This would also help to reduce forest fragmentation and pressure on wetlands in the county's east and northeast.
+Mapping Hall County's development potential and projected population with developed land and wetlands (the "not suitable" land) shows us that the County still has a significant amount of area that is suitable for development. In particular, this county would do well to prioritize infill development between highways in its northwest and southern portions where there is predicted to be both high development demand and significant population growth. This would also help to reduce forest fragmentation and pressure on wetlands in the county's east and northeast.
 
 ## Clayton County
 
 Next, we map the same supply and demand factors for Clayton County to examine an example of a county not well suited to further development.
 
-```{r Clayton County, fig.width=12}
+```{r Clayton County, fig.width=12, fig.height=10}
 ClaytonCounty <-
   dat2 %>%
     mutate(Development_Demand = predict(Model6, dat2, type="response")) %>%
@@ -1528,8 +1597,22 @@ ggplot() +
 
 In contrast to Hall County's relatively large amount of land that is suitable for development, we see that Clayton County has almost none. The county is almost entirely developed and the two areas in the southern portion of the county that are not developed are dominated by wetland areas that are not suitable for development.
 
-Furthermore, the map shows that although the remaining cells that are suitable for development, are predicted to experience development demand, and are projected to experience population growth all are near wetland areas. Therefore, Clayton County is an ideal location for conservation rather than development in the Atlanta metro area.
+Furthermore, the map shows that the remaining cells are all near wetland areas or not expected to see population growth. Therefore, Clayton County is an ideal location for conservation rather than development in the Atlanta metro area.
 
 # Conclusion
 
 Thank you for walking through our model. What we take away from this is....
+
+```{r export charts, include = FALSE, eval = FALSE}
+dir_ct_graphics <- "C:/Users/ctown/OneDrive - PennO365/Classes/Classes_Sem4_2023Spring/CPLN 675_Land Modeling/Assignments/A5_SprawlForecasting/Graphics"
+
+ggsave(paste(dir_ct_graphics, "HallCounty1.pdf", sep='/'), plot = Map_Hall1, width = 11)
+ggsave(paste(dir_ct_graphics, "HallCounty2.pdf", sep='/'), plot = Map_Hall2, width = 11)
+
+ggsave(paste(dir_ct_graphics, "HighwayPred.pdf", sep='/'), plot = Map_highway_pred, width = 11)
+ggsave(paste(dir_ct_graphics, "PopPredMap.pdf", sep='/'), plot = map_pred29, width = 11)
+
+ggsave(paste(dir_ct_graphics, "Chart_TestProbs.pdf", sep='/'), plot = chart_testProbs, width = 11)
+
+ggsave(paste(dir_ct_graphics, "Landcover08.pdf", sep='/'), plot = rasters08_map, width = 11)
+```

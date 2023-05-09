@@ -23,3 +23,22 @@ lc_2019 <- projectRaster(lc_2019, crs = st_crs(metro_counties))
 #check new projections
 st_crs(lc_2008)
 st_crs(lc_2019)
+
+
+#Half-finished Attempt at cropping new road predictions by county
+ggplot() +
+  geom_point(data=st_intersection(
+    filter(metro_counties, NAME=="Walton"), dev_change_fishnet),
+    aes(x=xyC(dev_change_fishnet)$x, y=xyC(dev_change_fishnet)$y, colour=development_change)) +
+  scale_colour_manual(values = c(gray, "#ED7953FF"),
+                      labels=c("No Change","New Development"),
+                      name = "") +
+  labs(title = "Land Cover Development Change",
+       subtitle = "Atlanta metro area | Fishnet centroids with existing highways\nin dark blue and a new highway in cyan") +
+  geom_sf(data=filter(metro_counties, NAME=="Walton"), fill=NA, colour="white", size=.75) +
+  geom_sf(data=st_intersection(AtlantaHighways,
+                               filter(metro_counties, NAME=="Walton")),
+          linewidth=1,
+          color = darkGray) +
+  geom_sf(data=new_highway, colour="cyan", linewidth=1) +
+  mapTheme
