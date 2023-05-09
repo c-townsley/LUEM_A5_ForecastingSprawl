@@ -853,7 +853,7 @@ dat %>%
 
 # Model Building: Binary Logistic Regression - Predicting for 2019
 
-This section uses data from our first time period to create a model to predict land use change. We will create seven logistic regression models to predict development change between 2008 and 2019.
+This section uses data from our first time period to create a model to predict land use change. We will create six logistic regression models to predict development change between 2008 and 2019.
 
 The first step is splitting the data in half and creating two test/training sets.
 
@@ -872,7 +872,7 @@ nrow(dat)
 
 ```
 
-These are the seven linear models created. They are numbered to reflect increasing complexity. While Model 1 concentrates exclusively on land cover type and whether development change occurred between the two time periods, later models incorporate the spatial lag of development, population elements, and our distance variables.
+These are the six linear models created. They are numbered to reflect increasing complexity. While Model 1 concentrates exclusively on land cover type and whether development change occurred between the two time periods, later models incorporate the spatial lag of development, population elements, and our distance variables.
 
 ```{r linear models and plotting their R sqaured values and test set histogram plot}
 Model1 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08, 
@@ -894,10 +894,8 @@ Model5 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeve
 Model6 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + pop_Change +               distance_highways, 
               family="binomial"(link="logit"), data = datTrain) 
 
-Model7 <- glm(development_change ~ wetlands08 + forest08  + farm08 + otherUndeveloped08 + lagDevelopment08 + distance_highways, 
-              family="binomial"(link="logit"), data = datTrain) 
 
-modelList <- paste0("Model", 1:7)
+modelList <- paste0("Model", 1:6)
 map_dfc(modelList, function(x)pR2(get(x)))[4,] %>%
   setNames(paste0("Model",1:6)) %>%
   gather(Model,McFadden) %>%
@@ -970,7 +968,7 @@ predsForMap <-
 ggplot() +
   geom_point(data=predsForMap, aes(x=xyC(predsForMap)[,1], y=xyC(predsForMap)[,2], colour=Value)) +
   facet_wrap(~Variable) +
-  scale_colour_manual(values = palette2, labels=c("No Change","New Development"),
+  scale_colour_manual(values = c(gray, highlight), labels=c("No Change","New Development"),
                       name="") +
   geom_sf(data=metro_counties,
           color = "white",
@@ -1163,9 +1161,9 @@ Now, with the new highways dataset, we can create a new distance-to-highway rast
 
 ```{r create highway distance raster with new highway segment }
 
-new_highway_raster <- 
-   as(highways_all,'Spatial') %>%
-   rasterize(.,emptyRaster)
+#new_highway_raster <- 
+ #  as(highways_all,'Spatial') %>%
+  # rasterize(.,emptyRaster)
 
 #new_highway_raster_distance <- distance(new_highway_raster)
 #writeRaster(new_highway_raster_distance, filename=file.path(rast_dir, "new_highway_dist.tif"), format="GTiff", overwrite=TRUE)
@@ -1200,13 +1198,13 @@ ggplot() +
 
 ```
 
-We then run the dataset through Model 7 which is agnostic to population change, but responsive to land cover type, the spatial lag of development, and distance to highways. Because population is excluded, this model is effective in showing a true response to supply-side forces.
+We then run the dataset through Model 6 which is agnostic to population change, but responsive to land cover type, the spatial lag of development, and distance to highways. Because population is excluded, this model is effective in showing a true response to supply-side forces.
 
 ```{r}
 dat_highway <-
   dat %>%
   #predict for 2029
-    mutate(predict_2029.distance_highways = predict(Model7,. , type="response"))
+    mutate(predict_2029.distance_highways = predict(Model6,. , type="response"))
 
 dat_highway %>%
   ggplot() +  
@@ -1397,11 +1395,13 @@ The demand side factors are `Mean_Development_Demand` and `Population_Change_Rat
 
 Factors suitable for development are area of `Total_Farmland` and area of `Total_Undeveloped` land in a given county.
 
-Factors not suitable for development are area of `Sensitive_Regions`, `Sensitive_Land_Lost`, and `Total_Wetlands` in a county.
+Factors not suitable for development are area of `Sensitive_Regions`, `Sensitive_Land_Lost`, and `Total_Wetlands` in a county. 
+
+In determining our allocation criteria, we determined any area with a wetland was not suitable for development. Attending to the externalities of urban sprawl, we chose to preserve these vital ecosystems. When it comes to forests, however, given that Atlanta MSA has such extensive tree cover, we determined that forested areas are suitable for development.
 
 Looking at the development suitability indicators across the 21 counties of Georgia's MSA, we see that all counties have a large percentage of forested land and therefore of sensitive regions. Looking at the rest of the indicators together however, we can see that some counties are better suited for development than others.
 
-For example, we see that Hall County has both a high rate of development demand and of population change. It also has a relatively large amount of farmland and a relatively low amount of total wetlands and senstive land lost. Together, these factors suggest that Hall County has ample space for development that will not impact sensitive areas (other than forest).
+For example, we see that Hall County has both a high rate of development demand and of population change. It also has a relatively large amount of farmland and a relatively low amount of total wetlands and sensitive land lost. Together, these factors suggest that Hall County has ample space for development that will not impact sensitive areas (other than forest).
 
 The satellite image below of development in Hall County shows why there is a large amount of forested land cover across the Atlanta metro region. There seems to be a regional preference for dispersed development in forested land.
 
@@ -1424,8 +1424,6 @@ ggplot() +
 ## Hall County
 
 First, we map supply and demand factors for Hall County, to examine an example of a county well suited to further development.
-
-**Note:** we do not include forest in the "not suitable for development" category in these maps due to the large amount of tree cover in the Atlanta region's developed areas.
 
 ```{r hall county, fig.width=12}
 HallCounty <-
@@ -1528,3 +1526,5 @@ In contrast to Hall County's relatively large amount of land that is suitable fo
 Furthermore, the map shows that although the remaining cells that are suitable for development, are predicted to experience development demand, and are projected to experience population growth all are near wetland areas. Therefore, Clayton County is an ideal location for conservation rather than development in the Atlanta metro area.
 
 # Conclusion
+
+Thank you for walking through our model. What we take away from this is....
