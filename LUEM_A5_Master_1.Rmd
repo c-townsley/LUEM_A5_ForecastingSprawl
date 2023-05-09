@@ -474,7 +474,7 @@ ggplot() +
           fill = "transparent",
           linewidth = .75) +
   labs(title="Development Land Cover Change (2008-2019)",
-       subtitle = "Atlanta metro area | Fishnet centroids") +
+       subtitle = "Atlanta metro area | Raster cells") +
   mapTheme +
    theme(legend.position = "none")
   
@@ -906,7 +906,7 @@ map_dfc(modelList, function(x)pR2(get(x)))[4,] %>%
 
 ```
 
-Now, we use the predicted values from Model 6 to create a histogram of the model's test set predicted probabilities.
+Now, we use the predicted values from Model 6 to create a histogram of the model's test set predicted probabilities. This shows us that a high density of cells have roughly a 40% likelihood of development.
 
 ```{r Density plot of probabilities observed by class}
 testSetProbs <- 
@@ -932,7 +932,7 @@ This next segment tests our model's:
 
 Our ultimate goal with a land cover change model is to optimize to balance the model's predictions with regard to both sensitivity and specificity. Meaning, we want the model to be capable at predicting where development occurs so that we can plan for those areas, but we also want it to accurately predict where development would not occur, to inform our other land use planning.
 
-At the thresholds specified here, 5% and 17%, we can see that the 5% threshold very accurately predicts the "true negatives," where development does not occur. The threshold of 17%, however, performs better on the "true positive" rate of predicted v. actual development, that has occurred.
+At the first two thresholds specified here, 5% and 17%, we can see that the 5% threshold very accurately predicts the "true negatives," where development does not occur. The threshold of 17%, however, performs better on the "true positive" rate of predicted v. actual development, that has occurred. We found that the best balance between the trade-offs of sensitivity and specificity was shown at a threshold of around 34%. We chose 34% because it gives us the highest overall accuracy, and allows us to keep both our sensitivity and specificity over 50%. 
 
 ```{r testing model sensitivity}
 options(yardstick.event_first = FALSE)
@@ -940,7 +940,8 @@ options(yardstick.event_first = FALSE)
 testSetProbs <- 
   testSetProbs %>% 
   mutate(predClass_05 = as.factor(ifelse(testSetProbs$probs >= 0.05 ,1,0)),
-         predClass_17 = as.factor(ifelse(testSetProbs$probs >= 0.17 ,1,0))) 
+         predClass_17 = as.factor(ifelse(testSetProbs$probs >= 0.17 ,1,0)),
+         predClass_34 = as.factor(ifelse(testSetProbs$probs >= 0.34 ,1,0))) 
 
 testSetProbs %>%
   dplyr::select(-probs) %>%
@@ -960,8 +961,9 @@ predsForMap <-
   dat %>%
     mutate(probs = predict(Model6, dat, type="response") ,
            Threshold_5_Pct = as.factor(ifelse(probs >= 0.05 ,1,0)),
-           Threshold_17_Pct =  as.factor(ifelse(probs >= 0.17 ,1,0))) %>%
-    dplyr::select(development_change,Threshold_5_Pct,Threshold_17_Pct) %>%
+           Threshold_17_Pct =  as.factor(ifelse(probs >= 0.17 ,1,0)),
+           Threshold_34_Pct =  as.factor(ifelse(probs >= 0.34 ,1,0))) %>%
+    dplyr::select(development_change,Threshold_5_Pct,Threshold_17_Pct, Threshold_34_Pct) %>%
     gather(Variable,Value, -geometry) %>%
     st_cast("POLYGON")
 
@@ -992,11 +994,14 @@ ConfusionMatrix.metrics <-
   dat %>%
     mutate(probs = predict(Model6, dat, type="response") ,
            Threshold_5_Pct = as.factor(ifelse(probs >= 0.05 ,1,0)),
-           Threshold_17_Pct =  as.factor(ifelse(probs >= 0.17 ,1,0))) %>%
+           Threshold_17_Pct =  as.factor(ifelse(probs >= 0.17 ,1,0)),
+          Threshold_34_Pct =  as.factor(ifelse(probs >= 0.34 ,1,0))) %>%
     mutate(TrueP_05 = ifelse(development_change  == 1 & Threshold_5_Pct == 1, 1,0),
            TrueN_05 = ifelse(development_change  == 0 & Threshold_5_Pct == 0, 1,0),
            TrueP_17 = ifelse(development_change  == 1 & Threshold_17_Pct == 1, 1,0),
-           TrueN_17 = ifelse(development_change  == 0 & Threshold_17_Pct == 0, 1,0)) %>%
+           TrueN_17 = ifelse(development_change  == 0 & Threshold_17_Pct == 0, 1,0),
+           TrueP_34 = ifelse(development_change  == 1 & Threshold_34_Pct == 1, 1,0),
+           TrueN_34 = ifelse(development_change  == 0 & Threshold_34_Pct == 0, 1,0)) %>%
     dplyr::select(., starts_with("True")) %>%
     gather(Variable, Value, -geometry) %>%
     st_cast("POLYGON") 
@@ -1108,7 +1113,7 @@ dat_infill %>%
   geom_point(aes(x=xyC(dat_infill)[,1], y=xyC(dat_infill)[,2], colour = factor(ntile(predict_2029.infill,5)))) +
   scale_colour_manual(values = palette5,
                     labels=substr(quintileBreaks(dat_infill,"predict_2029.infill"),1,4),
-                    name="Quintile\nBreaks") +
+                    name="% Likelihood\nof Development") +
   geom_sf(data=metro_counties, fill=NA, colour="white", size=.75) +
   labs(title= "Development Demand in 2029: Predicted Probabilities",
     subtitle = "Based on population change projections")+
@@ -1211,7 +1216,7 @@ dat_highway %>%
   geom_point(aes(x=xyC(dat_highway)[,1], y=xyC(dat_highway)[,2], colour = factor(ntile(predict_2029.distance_highways,5)))) +
   scale_colour_manual(values = palette5,
                     labels=substr(quintileBreaks(dat_highway,"predict_2029.distance_highways"),1,4),
-                    name="Quintile\nBreaks") +
+                    name="% Likelihood\nof Development") +
     geom_sf(data=highways_all, colour = "black") +
    geom_sf(data=new_highway, colour="cyan", linewidth=.75) +
   labs(title= "Development Supply in 2029: Predicted Probabilities",
